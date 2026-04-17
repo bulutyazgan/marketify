@@ -464,8 +464,8 @@
         "Commit"
       ],
       "priority": 31,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Root _layout already provided AuthProvider+ToastProvider+GestureHandlerRootView from US-030. Added role-aware redirect at app/index.tsx (creator→/(creator)/feed, lister→/(lister)/dashboard, anon→/(auth)). Creator routes per design §3.1 = /feed /applications /submissions /profile (label 'Discover' still shows on the Feed tab/header per spec); Lister routes per §3.2 = /dashboard /campaigns /inbox /profile with FAB mirrored on Dashboard + Campaigns. Custom TabBar primitive (src/components/shared/TabBar.tsx) renders on top of <Slot /> — expo-router's native <Tabs> crashes under Expo Go + SDK 54 new-arch with 'expected dynamic type boolean'. TabDef splits `path` (for router.navigate) from `activePathname` (URL-stripped for usePathname match) because route-group parens are invisible in the URL. Dev role picker in (auth)/index.tsx lives inside a `__DEV__`-branched sub-component so Metro can strip the fake tokens + UUIDs — module-level const would survive dead-code removal. Spec gap: Toast primitive doesn't fire at runtime (verified regression exists on /(dev)/primitives toast test buttons too, predates US-031 — no Toast.tsx changes since US-028 where it worked). Not blocking US-031 AC but needs separate story. Screenshots: scripts/ralph/screenshots/us-031-{auth,creator-feed,creator-discover,creator-profile,lister-home,lister-campaigns-fab,lister-fab-toast}.png."
     },
     {
       "id": "US-032",
