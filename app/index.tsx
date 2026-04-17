@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ButtonPrimary, ButtonSecondary } from '@/components/primitives/Button';
+import { CampaignCard } from '@/components/primitives/CampaignCard';
 import { Chip } from '@/components/primitives/Chip';
+import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { StatusPill } from '@/components/primitives/StatusPill';
 import { colors, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
@@ -53,6 +55,31 @@ export default function Index() {
           <StatusPill status="rejected" testID="pill-rejected" />
           <StatusPill status="cancelled" testID="pill-cancelled" />
         </View>
+
+        <Text style={[textStyles.h2, styles.sectionHeader]}>Campaign cards</Text>
+        <View style={styles.cardStack}>
+          <CampaignCard
+            title="Clean Beauty Review"
+            listerHandle="@cleanco"
+            priceCents={25000}
+            currency="USD"
+            preConditionSummary="50K+ TikTok followers · 5K+ avg views"
+            status="pending"
+            onPress={() => {}}
+            testID="card-clean-beauty"
+          />
+          <CampaignCard
+            title="Summer Travel Collab"
+            listerHandle="@nomadgear"
+            priceCents={80000}
+            currency="EUR"
+            preConditionSummary="20K+ Instagram followers"
+            status="approved"
+            onPress={() => {}}
+            testID="card-summer-travel"
+          />
+          <SkeletonCard height={160} testID="skeleton-card" />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -92,5 +119,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     alignItems: 'center',
+  },
+  cardStack: {
+    gap: spacing.base,
   },
 });

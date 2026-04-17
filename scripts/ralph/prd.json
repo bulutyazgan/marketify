@@ -406,8 +406,8 @@
         "Commit"
       ],
       "priority": 27,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "CampaignCard props intentionally minimal (title, listerHandle, priceCents, currency, preConditionSummary, status, onPress) — the §6 inventory lists platforms[]/eligibility/variant/counts but the story AC enumerates only the 5 rendered fields. Deferred the richer prop set (same precedent as US-025 Button variant + US-026 Chip variant) — will land when the first caller actually needs them (US-038 Discover feed for eligibility/platform badges, US-054 My Campaigns for lister-side counts). SkeletonCard stores layout width in a `useSharedValue` rather than React state so the worklet avoids stale-capture flicker on first layout (code-reviewer catch — promoted to Codebase Patterns). Mid-press shadow-collapse screenshot deliberately NOT captured (same timing limitation as US-025 Button) — rest-state + tsc/lint/code-review are authoritative verification."
     },
     {
       "id": "US-028",
