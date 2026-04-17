@@ -1,4 +1,4 @@
-// Edge function: apify-webhook (US-016)
+// Edge function: apify-webhook (US-016, US-017)
 //
 // Contract:
 //   POST (headers include X-Apify-Webhook-Secret)
@@ -20,19 +20,20 @@
 //   APIFY_WEBHOOK_SECRET_PREVIOUS (dual-secret rotation window per
 //   docs/tech-architecture.md §3g). Deploy with --no-verify-jwt.
 //
-// Idempotency: the RPC public.apify_webhook_persist_tiktok_profile inserts
+// Idempotency: each scrape_mode branch dispatches to its own persistence RPC
+//   (public.apify_webhook_persist_tiktok_profile, ..._ig_details) that inserts
 //   one metric_snapshots row keyed on apify_run_id; the partial unique index
 //   metric_snapshots_run_uniq makes the second webhook for the same run a
-//   no-op. RPC returns {inserted, duplicate, snapshot_id?}.
+//   no-op. Each RPC returns {inserted, duplicate, snapshot_id?}.
 //
-// Scope (US-016): tiktok_profile branch only. ig_details / ig_posts return
-//   200 { skipped: 'unsupported_scrape_mode' } so Apify doesn't retry; the
-//   matching branches ship with US-017.
+// Scope (US-016, US-017): tiktok_profile + ig_details branches. ig_posts
+//   returns 200 { skipped: 'unsupported_scrape_mode' } so Apify doesn't retry;
+//   that branch ships with US-018.
 //
-// Pre-refreshing-row note (US-020 handoff): the RPC currently INSERTs (never
-//   UPDATEs), so it assumes no existing snapshot row carries this apify_run_id.
+// Pre-refreshing-row note (US-020 handoff): each RPC currently INSERTs (never
+//   UPDATEs), so assumes no existing snapshot row carries this apify_run_id.
 //   US-020 (auth-signup-creator Apify dispatch) will pre-create snapshots in
-//   status='refreshing' before the webhook arrives — at that point this RPC
+//   status='refreshing' before the webhook arrives — at that point the RPC
 //   (or the denorm trigger) must be extended to UPDATE-then-denorm. See the
 //   spec-gap note in the us_016_apify_webhook_persist_rpc migration.
 
@@ -72,9 +73,22 @@ interface TikTokItem {
   playCount?: number;
 }
 
+interface InstagramDetailsItem {
+  followersCount?: number;
+  followsCount?: number;
+  postsCount?: number;
+  verified?: boolean;
+}
+
 type MetricStatus = "fresh" | "failed";
 
 type ScrapeMode = "tiktok_profile" | "ig_details" | "ig_posts";
+
+interface PersistResult {
+  inserted?: boolean;
+  duplicate?: boolean;
+  snapshot_id?: string;
+}
 
 const SUCCEEDED_EVENT = "ACTOR.RUN.SUCCEEDED";
 const TERMINAL_EVENT_TYPES = new Set([
@@ -201,11 +215,11 @@ Deno.serve(async (req) => {
   }
 
   const scrapeMode = body.scrape_mode as ScrapeMode;
-  if (scrapeMode !== "tiktok_profile") {
-    // ig_details / ig_posts are wired in US-017; return 200 so Apify does not
-    // retry. The social_link_id is intentionally not logged here — the row
-    // will still be stuck 'refreshing' until the fail-stuck-refreshing cron
-    // janitor (docs/tech-architecture.md §15) flips it to 'failed'.
+  if (scrapeMode !== "tiktok_profile" && scrapeMode !== "ig_details") {
+    // ig_posts is wired in US-018; return 200 so Apify does not retry. The
+    // social_link_id is intentionally not logged here — the row will still be
+    // stuck 'refreshing' until the fail-stuck-refreshing cron janitor
+    // (docs/tech-architecture.md §15) flips it to 'failed'.
     return jsonResponse(200, { ok: true, skipped: "unsupported_scrape_mode" });
   }
 
@@ -223,12 +237,7 @@ Deno.serve(async (req) => {
     : new Date().toISOString();
 
   let nextStatus: MetricStatus;
-  let followerCount: number | null = null;
-  let followingCount: number | null = null;
-  let totalLikes: number | null = null;
-  let videoCount: number | null = null;
-  let avgViewsLast10: number | null = null;
-  let isVerified: boolean | null = null;
+  let items: unknown[] | null = null;
   let rawPayload: unknown = null;
   let errorMessage: string | null = null;
 
@@ -237,7 +246,6 @@ Deno.serve(async (req) => {
     if (!apifyKey) {
       return jsonResponse(500, { error: "SERVER_MISCONFIGURED" });
     }
-    let items: unknown[];
     try {
       items = await fetchDatasetItems(resource.defaultDatasetId, apifyKey);
     } catch (err) {
@@ -249,21 +257,6 @@ Deno.serve(async (req) => {
       return jsonResponse(500, { error: "APIFY_FETCH_ERROR" });
     }
     rawPayload = items;
-    const tiktokItems = items as TikTokItem[];
-    const first = tiktokItems[0];
-    const authorMeta = first?.authorMeta;
-    if (authorMeta) {
-      followerCount = typeof authorMeta.fans === "number" ? authorMeta.fans : null;
-      followingCount = typeof authorMeta.following === "number"
-        ? authorMeta.following
-        : null;
-      totalLikes = typeof authorMeta.heart === "number" ? authorMeta.heart : null;
-      videoCount = typeof authorMeta.video === "number" ? authorMeta.video : null;
-      isVerified = typeof authorMeta.verified === "boolean"
-        ? authorMeta.verified
-        : null;
-    }
-    avgViewsLast10 = meanPlayCount(tiktokItems);
     nextStatus = "fresh";
   } else {
     nextStatus = "failed";
@@ -275,38 +268,109 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data, error } = await supabase.rpc(
-    "apify_webhook_persist_tiktok_profile",
-    {
-      p_run_id: runId,
-      p_social_link_id: socialLinkId,
-      p_status: nextStatus,
-      p_fetched_at: fetchedAt,
-      p_follower_count: followerCount,
-      p_following_count: followingCount,
-      p_total_likes: totalLikes,
-      p_video_count: videoCount,
-      p_avg_views_last_10: avgViewsLast10,
-      p_is_verified: isVerified,
-      p_raw_payload: rawPayload as never,
-      p_error_message: errorMessage,
-    },
-  );
+  let result: PersistResult | null = null;
+  let rpcError: { code?: string; message?: string } | null = null;
+  let rpcName: string;
 
-  if (error) {
-    console.error("apify_webhook_persist_tiktok_profile rpc error", {
+  if (scrapeMode === "tiktok_profile") {
+    rpcName = "apify_webhook_persist_tiktok_profile";
+    let followerCount: number | null = null;
+    let followingCount: number | null = null;
+    let totalLikes: number | null = null;
+    let videoCount: number | null = null;
+    let avgViewsLast10: number | null = null;
+    let isVerified: boolean | null = null;
+    if (items) {
+      const tiktokItems = items as TikTokItem[];
+      const first = tiktokItems[0];
+      const authorMeta = first?.authorMeta;
+      if (authorMeta) {
+        followerCount = typeof authorMeta.fans === "number" ? authorMeta.fans : null;
+        followingCount = typeof authorMeta.following === "number"
+          ? authorMeta.following
+          : null;
+        totalLikes = typeof authorMeta.heart === "number" ? authorMeta.heart : null;
+        videoCount = typeof authorMeta.video === "number" ? authorMeta.video : null;
+        isVerified = typeof authorMeta.verified === "boolean"
+          ? authorMeta.verified
+          : null;
+      }
+      avgViewsLast10 = meanPlayCount(tiktokItems);
+    }
+    const { data, error } = await supabase.rpc(
+      "apify_webhook_persist_tiktok_profile",
+      {
+        p_run_id: runId,
+        p_social_link_id: socialLinkId,
+        p_status: nextStatus,
+        p_fetched_at: fetchedAt,
+        p_follower_count: followerCount,
+        p_following_count: followingCount,
+        p_total_likes: totalLikes,
+        p_video_count: videoCount,
+        p_avg_views_last_10: avgViewsLast10,
+        p_is_verified: isVerified,
+        p_raw_payload: rawPayload as never,
+        p_error_message: errorMessage,
+      },
+    );
+    result = data as PersistResult | null;
+    rpcError = error;
+  } else {
+    // ig_details — details[0] yields follower/following/posts/verified per
+    // docs/tech-architecture.md §3c. avg_views_last_10 is owned by ig_posts,
+    // so leave it NULL here; the denorm trigger for ig_details updates only
+    // instagram_follower_count + instagram_media_count + metrics_fetched_at.
+    rpcName = "apify_webhook_persist_ig_details";
+    let followerCount: number | null = null;
+    let followingCount: number | null = null;
+    let mediaCount: number | null = null;
+    let isVerified: boolean | null = null;
+    if (items) {
+      const igItems = items as InstagramDetailsItem[];
+      const first = igItems[0];
+      if (first) {
+        followerCount = typeof first.followersCount === "number"
+          ? first.followersCount
+          : null;
+        followingCount = typeof first.followsCount === "number"
+          ? first.followsCount
+          : null;
+        mediaCount = typeof first.postsCount === "number"
+          ? first.postsCount
+          : null;
+        isVerified = typeof first.verified === "boolean"
+          ? first.verified
+          : null;
+      }
+    }
+    const { data, error } = await supabase.rpc(
+      "apify_webhook_persist_ig_details",
+      {
+        p_run_id: runId,
+        p_social_link_id: socialLinkId,
+        p_status: nextStatus,
+        p_fetched_at: fetchedAt,
+        p_follower_count: followerCount,
+        p_following_count: followingCount,
+        p_media_count: mediaCount,
+        p_is_verified: isVerified,
+        p_raw_payload: rawPayload as never,
+        p_error_message: errorMessage,
+      },
+    );
+    result = data as PersistResult | null;
+    rpcError = error;
+  }
+
+  if (rpcError) {
+    console.error(`${rpcName} rpc error`, {
       run_id: runId,
-      code: error.code,
-      message: error.message,
+      code: rpcError.code,
+      message: rpcError.message,
     });
     return jsonResponse(500, { error: "DB_ERROR" });
   }
-
-  const result = data as {
-    inserted?: boolean;
-    duplicate?: boolean;
-    snapshot_id?: string;
-  } | null;
 
   return jsonResponse(200, {
     ok: true,

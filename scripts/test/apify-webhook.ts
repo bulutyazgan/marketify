@@ -1,4 +1,4 @@
-// Smoke test for the deployed apify-webhook edge function (US-016).
+// Smoke test for the deployed apify-webhook edge function (US-016, US-017).
 //
 // Usage: bun run scripts/test/apify-webhook.ts
 // Requires SUPABASE_URL, SUPABASE_ANON_KEY, APIFY_WEBHOOK_SECRET in .env.
@@ -12,9 +12,12 @@
 //   2. Wrong secret → 401 UNAUTHORIZED (constant-time reject)
 //   3. Malformed JSON body with valid secret → 400 INVALID_JSON
 //   4. Missing required fields → 400 INVALID_REQUEST
-//   5. scrape_mode='ig_details' → 200 { skipped:'unsupported_scrape_mode' }
+//   5. scrape_mode='ig_posts' → 200 { skipped:'unsupported_scrape_mode' }
+//      (ig_posts ships in US-018; tiktok_profile+ig_details are live now)
 //   6. tiktok_profile + ACTOR.RUN.FAILED → 200 { inserted:true, duplicate:false }
-//   7. Replay same run_id → 200 { inserted:false, duplicate:true }
+//   7. Replay same tiktok_profile run_id → 200 { inserted:false, duplicate:true }
+//   8. ig_details + ACTOR.RUN.FAILED → 200 { inserted:true, duplicate:false }
+//   9. Replay same ig_details run_id → 200 { inserted:false, duplicate:true }
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
@@ -35,10 +38,11 @@ const gatewayHeaders = {
 };
 
 const SEED_TIKTOK_SOCIAL_LINK_ID = "11111111-1111-1111-1111-111111111020";
+const SEED_INSTAGRAM_SOCIAL_LINK_ID = "11111111-1111-1111-1111-111111111021";
 const unique = Date.now();
 
 function basePayload(overrides: Record<string, unknown> = {}) {
-  const runId = `us016_test_${unique}_${Math.random().toString(36).slice(2, 10)}`;
+  const runId = `us017_test_${unique}_${Math.random().toString(36).slice(2, 10)}`;
   return {
     eventType: "ACTOR.RUN.FAILED",
     resource: {
@@ -127,23 +131,23 @@ function expect(label: string, cond: boolean, ctx: unknown) {
   );
 }
 
-// 5. ig_details scrape_mode → unsupported_scrape_mode
+// 5. ig_posts scrape_mode → unsupported_scrape_mode (ig_posts ships US-018)
 {
   const r = await postRaw(
-    basePayload({ scrape_mode: "ig_details" }),
+    basePayload({ scrape_mode: "ig_posts" }),
     { "X-Apify-Webhook-Secret": webhookSecret },
   );
   expect(
-    "ig_details → 200 skipped",
+    "ig_posts → 200 skipped",
     r.status === 200 && r.data?.skipped === "unsupported_scrape_mode",
     r,
   );
 }
 
 // 6. tiktok_profile + FAILED event → inserts failed snapshot
-const failedRunBody = basePayload();
+const failedTikTokRunBody = basePayload();
 {
-  const r = await postRaw(failedRunBody, {
+  const r = await postRaw(failedTikTokRunBody, {
     "X-Apify-Webhook-Secret": webhookSecret,
   });
   expect(
@@ -153,13 +157,49 @@ const failedRunBody = basePayload();
   );
 }
 
-// 7. Same run_id replay → idempotent duplicate
+// 7. Same tiktok_profile run_id replay → idempotent duplicate
 {
-  const r = await postRaw(failedRunBody, {
+  const r = await postRaw(failedTikTokRunBody, {
     "X-Apify-Webhook-Secret": webhookSecret,
   });
   expect(
-    "replay same run_id → 200 duplicate",
+    "replay same tiktok_profile run_id → 200 duplicate",
+    r.status === 200 && r.data?.inserted === false && r.data?.duplicate === true,
+    r,
+  );
+}
+
+// 8. ig_details + FAILED event → inserts failed snapshot against the IG seed link
+const igRunId = `us017_ig_${unique}_${Math.random().toString(36).slice(2, 10)}`;
+const failedIgDetailsRunBody = basePayload({
+  scrape_mode: "ig_details",
+  social_link_id: SEED_INSTAGRAM_SOCIAL_LINK_ID,
+  resource: {
+    id: igRunId,
+    defaultDatasetId: `dataset_ig_${unique}`,
+    status: "FAILED",
+    actId: "apify~instagram-scraper",
+  },
+  run_id: igRunId,
+});
+{
+  const r = await postRaw(failedIgDetailsRunBody, {
+    "X-Apify-Webhook-Secret": webhookSecret,
+  });
+  expect(
+    "ig_details FAILED → 200 inserted",
+    r.status === 200 && r.data?.inserted === true && r.data?.duplicate === false,
+    r,
+  );
+}
+
+// 9. Same ig_details run_id replay → idempotent duplicate
+{
+  const r = await postRaw(failedIgDetailsRunBody, {
+    "X-Apify-Webhook-Secret": webhookSecret,
+  });
+  expect(
+    "replay same ig_details run_id → 200 duplicate",
     r.status === 200 && r.data?.inserted === false && r.data?.duplicate === true,
     r,
   );
