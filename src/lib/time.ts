@@ -24,3 +24,15 @@ export function formatRelativeTime(
   if (diffMs < year) return `${Math.floor(diffMs / month)}mo ago`;
   return `${Math.floor(diffMs / year)}y ago`;
 }
+
+// Formats a `retry_after_sec` value from the metrics-refresh 429 body as
+// "Xh Ym" (or "Ym"/"Xh") for the rate-limit toast per US-036 AC. Rounds up
+// to the next whole minute so a 200s retry reads "4m" not "3m".
+export function formatRetryAfter(seconds: number): string {
+  const safe = Math.max(0, Math.ceil(seconds));
+  const minutes = Math.ceil(safe / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}

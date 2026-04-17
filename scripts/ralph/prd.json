@@ -541,7 +541,7 @@
       ],
       "priority": 36,
       "passes": false,
-      "notes": ""
+      "notes": "2026-04-17: code implemented + reviewed + quality-gated (tsc/lint). Drag verification blocked by pre-existing PGRST301 RLS rejection on PostgREST — the project JWT secret has drifted from MARKETIFY_JWT_SECRET so every authed query under the custom HS256 token fails with JWSInvalidClaims. Affects any logged-in screen, not just US-036. Re-run verification after the secret is re-aligned (dashboard Project Settings → JWT Settings) — the pull-to-refresh code itself is unchanged."
     },
     {
       "id": "US-037",

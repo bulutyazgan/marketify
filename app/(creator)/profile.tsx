@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,14 +10,25 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  type WithSpringConfig,
+} from 'react-native-reanimated';
 import { BottomSheet } from '@/components/primitives/BottomSheet';
 import { ButtonPrimary, ButtonSecondary } from '@/components/primitives/Button';
 import { useToast } from '@/components/primitives/Toast';
+import { SPRING_SNAPPY, withReducedMotion } from '@/design/motion';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
+import { useReducedMotion } from '@/design/useReducedMotion';
 import { useAuth } from '@/lib/auth';
+import { getCachedToken } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
-import { formatRelativeTime } from '@/lib/time';
+import { formatRelativeTime, formatRetryAfter } from '@/lib/time';
 import type { Database } from '@/types/supabase';
 
 // US-035 — creator profile. Shows TikTok + Instagram handles with their
@@ -32,16 +43,22 @@ import type { Database } from '@/types/supabase';
 // metric_snapshots WHERE is_latest = true AND status = 'stale', which is
 // the signal the cron actually produces per docs/tech-architecture.md §16.
 //
-// Apify scrapes on add are deferred to US-036 (pull-to-refresh) to keep
-// this story focused on the CRUD flow — matches the story AC wording
-// ("small edge function").
+// US-036 extends this screen with per-platform pull-to-refresh that calls
+// the metrics-refresh edge function. On 429 we surface the server's
+// retry_after_sec as "Try again in Xh Ym". On success we optimistically
+// bump `last_refreshed_at` locally and subscribe to metric_snapshots
+// inserts so webhook-driven denorm updates roll in without a reload.
 
 type SocialPlatform = Database['public']['Enums']['platform'];
 type SocialLink = Database['public']['Tables']['social_links']['Row'];
 type CreatorProfileRow = Database['public']['Tables']['creator_profiles']['Row'];
+type MetricStatus = Database['public']['Enums']['metric_status'];
+type SnapshotEntry = { status: MetricStatus; fetched_at: string };
 
 const HANDLE_RE = /^[a-zA-Z0-9_.]{1,30}$/;
 const PLATFORMS: readonly SocialPlatform[] = ['tiktok', 'instagram'];
+const REFRESH_THRESHOLD = 64;
+const REFRESH_MAX_DRAG = 140;
 
 export default function CreatorProfile() {
   const { user, signOut } = useAuth();
@@ -49,12 +66,18 @@ export default function CreatorProfile() {
 
   const [profile, setProfile] = useState<CreatorProfileRow | null>(null);
   const [links, setLinks] = useState<SocialLink[]>([]);
-  const [snapshotByLink, setSnapshotByLink] = useState<
-    Map<string, { status: Database['public']['Enums']['metric_status']; fetched_at: string }>
-  >(new Map());
+  const [snapshotByLink, setSnapshotByLink] = useState<Map<string, SnapshotEntry>>(new Map());
   const [loading, setLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [sheetPlatform, setSheetPlatform] = useState<SocialPlatform | null>(null);
+  const [refreshingLinkId, setRefreshingLinkId] = useState<string | null>(null);
+  // Synchronous lock — React state updates are async, so the useCallback
+  // closure's refreshingLinkId can be stale if two gestures fire back-to-back.
+  // A ref gives us a write-on-call guard that every subsequent invocation
+  // observes immediately (Codebase Pattern #82 — same stale-capture rule
+  // that applies to Reanimated worklets applies to rapid JS-side event
+  // handlers too).
+  const refreshLock = useRef(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -76,10 +99,7 @@ export default function CreatorProfile() {
       if (linksRes.error) throw linksRes.error;
       const linkRows = linksRes.data ?? [];
       const linkIds = linkRows.map((l) => l.id);
-      const snapshotMap = new Map<
-        string,
-        { status: Database['public']['Enums']['metric_status']; fetched_at: string }
-      >();
+      const snapshotMap = new Map<string, SnapshotEntry>();
       if (linkIds.length > 0) {
         const snapsRes = await supabase
           .from('metric_snapshots')
@@ -108,6 +128,119 @@ export default function CreatorProfile() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Realtime: when the apify-webhook (or cron) inserts a fresh/stale
+  // metric_snapshots row for one of this creator's linked handles, the
+  // denorm trigger also updates creator_profiles — reload everything so
+  // the "Last refreshed" stamp + the denorm metric counts roll forward.
+  // Keyed on a stable string of sorted link ids to avoid resubscribing on
+  // every setLinks reference flip.
+  const linkIdKey = useMemo(
+    () => links.map((l) => l.id).sort().join(','),
+    [links],
+  );
+
+  useEffect(() => {
+    if (!user || linkIdKey === '') return;
+    const ids = linkIdKey.split(',');
+    const token = getCachedToken();
+    if (!token) return;
+    let cancelled = false;
+    let activeChannel: ReturnType<typeof supabase.channel> | null = null;
+    // Realtime runs over a websocket — the marketifyFetch Authorization
+    // wrapper in src/lib/supabase.ts only covers HTTP, so inject the JWT
+    // into the Realtime client explicitly before subscribing. RLS then
+    // applies metric_snapshots_self_read (us_035) to the stream.
+    void supabase.realtime.setAuth(token).then(() => {
+      if (cancelled) return;
+      activeChannel = supabase
+        .channel(`creator-metrics-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'metric_snapshots',
+            filter: `social_link_id=in.(${ids.join(',')})`,
+          },
+          (payload) => {
+            const row = payload.new as { is_latest?: boolean; status?: MetricStatus };
+            if (row.is_latest === true && (row.status === 'fresh' || row.status === 'stale')) {
+              void load();
+            }
+          },
+        )
+        .subscribe();
+    });
+    return () => {
+      cancelled = true;
+      if (activeChannel) void supabase.removeChannel(activeChannel);
+    };
+  }, [user, linkIdKey, load]);
+
+  const onRefresh = useCallback(
+    async (link: SocialLink) => {
+      if (refreshLock.current) return;
+      refreshLock.current = true;
+      setRefreshingLinkId(link.id);
+      try {
+        const { data, error } = await supabase.functions.invoke<{
+          status?: 'queued' | 'already_fresh';
+        }>('metrics-refresh', { body: { social_link_id: link.id } });
+        if (error) {
+          const ctx = (error as { context?: unknown }).context;
+          if (
+            ctx &&
+            typeof ctx === 'object' &&
+            'status' in ctx &&
+            typeof (ctx as { json?: unknown }).json === 'function'
+          ) {
+            const res = ctx as Response;
+            let body: { error?: string; retry_after_sec?: number } = {};
+            try {
+              body = (await res.json()) as { error?: string; retry_after_sec?: number };
+            } catch {
+              // non-JSON body — fall through to generic toast
+            }
+            if (res.status === 429 && typeof body.retry_after_sec === 'number') {
+              showToast({
+                message: `Try again in ${formatRetryAfter(body.retry_after_sec)}`,
+                variant: 'error',
+              });
+              return;
+            }
+            if (res.status === 422 && body.error === 'LINK_UNLINKED') {
+              showToast({ message: 'Handle is no longer linked.', variant: 'error' });
+              return;
+            }
+          }
+          showToast({ message: 'Could not refresh metrics.', variant: 'error' });
+          return;
+        }
+        if (data?.status === 'queued') {
+          // Optimistic stamp so "Last refreshed" reads "just now" until the
+          // Apify webhook lands and realtime triggers a reload. Scoped to
+          // the queued path only — for `already_fresh` the server-side
+          // fetched_at is already accurate (could be up to 6h old) and
+          // bumping it would fake a fresh refresh on stale data.
+          setSnapshotByLink((prev) => {
+            const next = new Map(prev);
+            const existing = next.get(link.id);
+            next.set(link.id, {
+              status: existing?.status ?? 'fresh',
+              fetched_at: new Date().toISOString(),
+            });
+            return next;
+          });
+          showToast({ message: 'Refreshing metrics…', variant: 'success' });
+        }
+      } finally {
+        refreshLock.current = false;
+        setRefreshingLinkId(null);
+      }
+    },
+    [showToast],
+  );
 
   const sections = useMemo(() => {
     return PLATFORMS.map((platform) => {
@@ -233,8 +366,10 @@ export default function CreatorProfile() {
                 isStale={isStale}
                 lastRefreshedAt={lastRefreshedAt}
                 pendingAction={pendingAction}
+                refreshing={link !== null && refreshingLinkId === link.id}
                 onOpenAdd={() => setSheetPlatform(platform)}
                 onUnlink={onUnlink}
+                onRefresh={onRefresh}
               />
             ))}
           </View>
@@ -267,8 +402,10 @@ type PlatformCardProps = {
   isStale: boolean;
   lastRefreshedAt: string | null;
   pendingAction: string | null;
+  refreshing: boolean;
   onOpenAdd: () => void;
   onUnlink: (link: SocialLink) => void;
+  onRefresh: (link: SocialLink) => void;
 };
 
 function PlatformCard({
@@ -278,8 +415,10 @@ function PlatformCard({
   isStale,
   lastRefreshedAt,
   pendingAction,
+  refreshing,
   onOpenAdd,
   onUnlink,
+  onRefresh,
 }: PlatformCardProps) {
   const { follower, avgViews } = extractMetrics(platform, profile);
   const lastRefreshedLabel = lastRefreshedAt
@@ -287,8 +426,8 @@ function PlatformCard({
     : 'Never';
   const unlinkLoading = link ? pendingAction === `unlink:${link.id}` : false;
 
-  return (
-    <View style={styles.card}>
+  const cardBody = (
+    <>
       <View style={styles.cardHeader}>
         <Text style={[textStyles.h2, { color: colors.ink }]}>{platformLabel(platform)}</Text>
         {isStale && link ? <StaleChip /> : null}
@@ -330,6 +469,127 @@ function PlatformCard({
           </View>
         </>
       )}
+    </>
+  );
+
+  if (!link) {
+    return <View style={styles.card}>{cardBody}</View>;
+  }
+
+  return (
+    <RefreshablePlatformCard
+      link={link}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      testID={`refresh-${platform}`}
+    >
+      {cardBody}
+    </RefreshablePlatformCard>
+  );
+}
+
+function RefreshablePlatformCard({
+  link,
+  refreshing,
+  onRefresh,
+  testID,
+  children,
+}: {
+  link: SocialLink;
+  refreshing: boolean;
+  onRefresh: (link: SocialLink) => void;
+  testID?: string;
+  children: React.ReactNode;
+}) {
+  const reduced = useReducedMotion();
+  const offset = useSharedValue(0);
+  const locked = useSharedValue(false);
+
+  useEffect(() => {
+    locked.value = refreshing;
+  }, [refreshing, locked]);
+
+  const triggerRefresh = useCallback(() => {
+    onRefresh(link);
+  }, [onRefresh, link]);
+
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        // activeOffsetY: [positive, ∞] — only activate on a meaningful
+        // DOWNWARD pull (> 15pt). Upward drags (negative translationY) and
+        // short vertical wobbles fall through to the outer ScrollView's
+        // native pan, so a normal page scroll doesn't accidentally trigger
+        // a refresh. failOffsetX cancels the pan entirely when the user
+        // is clearly swiping horizontally.
+        .activeOffsetY([15, 9999])
+        .failOffsetX([-20, 20])
+        .onUpdate((e) => {
+          if (locked.value) return;
+          // Dampen past the threshold so the card resists further pull.
+          const raw = Math.max(0, e.translationY);
+          const damped =
+            raw <= REFRESH_THRESHOLD
+              ? raw
+              : REFRESH_THRESHOLD + (raw - REFRESH_THRESHOLD) * 0.35;
+          offset.value = Math.min(damped, REFRESH_MAX_DRAG);
+        })
+        .onEnd(() => {
+          if (locked.value) return;
+          if (offset.value >= REFRESH_THRESHOLD) {
+            runOnJS(triggerRefresh)();
+          }
+          offset.value = withSpring(
+            0,
+            withReducedMotion<WithSpringConfig>(SPRING_SNAPPY, reduced),
+          );
+        })
+        .onFinalize(() => {
+          if (locked.value) return;
+          offset.value = withSpring(
+            0,
+            withReducedMotion<WithSpringConfig>(SPRING_SNAPPY, reduced),
+          );
+        }),
+    [reduced, offset, locked, triggerRefresh],
+  );
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: offset.value }],
+  }));
+
+  const spinnerStyle = useAnimatedStyle(() => {
+    const progress = Math.min(1, offset.value / REFRESH_THRESHOLD);
+    return {
+      opacity: progress,
+      transform: [{ scale: 0.9 + progress * 0.1 }],
+    };
+  });
+
+  return (
+    <View style={styles.refreshSlot} testID={testID}>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.spinnerTrack, spinnerStyle]}
+        accessible={false}
+        importantForAccessibility="no"
+      >
+        <ActivityIndicator color={colors.ink} />
+      </Animated.View>
+      {refreshing ? (
+        <View
+          style={styles.spinnerLocked}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel="Refreshing metrics"
+          testID={`${testID}-spinner`}
+        >
+          <ActivityIndicator color={colors.ink} />
+        </View>
+      ) : null}
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[styles.card, cardStyle]}>{children}</Animated.View>
+      </GestureDetector>
     </View>
   );
 }
@@ -473,6 +733,27 @@ const styles = StyleSheet.create({
   },
   sections: {
     gap: spacing.base,
+  },
+  refreshSlot: {
+    position: 'relative',
+  },
+  spinnerTrack: {
+    position: 'absolute',
+    top: -spacing.xxl,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: spacing.xxl,
+  },
+  spinnerLocked: {
+    position: 'absolute',
+    top: -spacing.xxl,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: spacing.xxl,
   },
   card: {
     backgroundColor: colors.surface,
