@@ -821,6 +821,18 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      list_my_applications: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          lister_handle: string
+          listing_id: string
+          listing_title: string
+          status: Database["public"]["Enums"]["application_status"]
+          version_title: string
+        }[]
+      }
       manage_social_link: {
         Args: {
           p_action: string
