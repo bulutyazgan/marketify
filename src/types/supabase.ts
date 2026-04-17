@@ -790,6 +790,15 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_to_listing_rpc: {
+        Args: {
+          p_cover_note?: string
+          p_creator_id: string
+          p_expected_version_id: string
+          p_listing_id: string
+        }
+        Returns: Json
+      }
       auth_signup_creator: {
         Args: {
           p_instagram_handle?: string

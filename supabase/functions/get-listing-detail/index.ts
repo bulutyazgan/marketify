@@ -62,43 +62,15 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { verifyJwt } from "../_shared/jwt.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  type ConditionRow,
+  type CreatorProfileRow,
+  EMPTY_CREATOR_METRICS,
+  evaluatePreConditions,
+} from "../_shared/eligibility.ts";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-type Platform = "tiktok" | "instagram";
-type ConditionKind = "pre" | "post";
-
-interface ConditionRow {
-  id: string;
-  listing_version_id: string;
-  kind: ConditionKind;
-  metric: string;
-  platform: Platform | null;
-  operator: string;
-  numeric_threshold: string | number | null;
-  text_threshold: string | null;
-  bool_threshold: boolean | null;
-  created_at: string;
-}
-
-interface CreatorProfileRow {
-  tiktok_follower_count: number | null;
-  tiktok_avg_views_last_10: number | null;
-  tiktok_total_likes: number | null;
-  tiktok_video_count: number | null;
-  tiktok_is_verified: boolean | null;
-  instagram_follower_count: number | null;
-  instagram_avg_views_last_10: number | null;
-  instagram_media_count: number | null;
-}
-
-interface FailedCondition {
-  metric: string;
-  platform: Platform | null;
-  required: number | boolean;
-  actual: number | boolean | null;
-}
 
 interface DetailRequest {
   listing_id?: unknown;
@@ -117,95 +89,6 @@ function bearerToken(req: Request): string | null {
   if (!raw) return null;
   const m = raw.match(/^Bearer\s+(.+)$/i);
   return m ? m[1].trim() : null;
-}
-
-// Evaluate a single pre-condition against the creator's denormalized
-// metrics. Returns `null` on pass, or the failed-condition detail on fail.
-// Missing data (null actual for a numeric threshold) fails closed per §3d.
-function evaluatePreCondition(
-  condition: ConditionRow,
-  metrics: CreatorProfileRow,
-): FailedCondition | null {
-  const { metric, platform, operator } = condition;
-  if (operator === "gte") {
-    const required = Number(condition.numeric_threshold);
-    if (!Number.isFinite(required)) return null; // malformed row — skip, not fail
-    const actual = readNumericMetric(metrics, platform, metric);
-    if (actual === null || actual < required) {
-      return { metric, platform, required, actual };
-    }
-    return null;
-  }
-  if (operator === "bool") {
-    const required = condition.bool_threshold === true;
-    const actual = readBoolMetric(metrics, platform, metric);
-    if (actual !== required) {
-      return { metric, platform, required, actual };
-    }
-    return null;
-  }
-  // Unknown operator on a PRE row — fail-closed per §3d. `eq`/`contains`/`lte`
-  // are reserved for post-conditions today (e.g. post_must_mention uses
-  // 'contains'), so this branch should be unreachable; if a future migration
-  // misplaces an operator, we'd rather block an apply than silently allow it.
-  console.warn("pre-condition with unknown operator treated as failed", {
-    condition_id: condition.id,
-    operator,
-    metric,
-    platform,
-  });
-  const parsed = Number(condition.numeric_threshold);
-  return {
-    metric,
-    platform,
-    required: Number.isFinite(parsed) ? parsed : 0,
-    actual: null,
-  };
-}
-
-function readNumericMetric(
-  metrics: CreatorProfileRow,
-  platform: Platform | null,
-  metric: string,
-): number | null {
-  if (platform === "tiktok") {
-    switch (metric) {
-      case "min_followers":
-        return metrics.tiktok_follower_count;
-      case "min_avg_views_last_n":
-        return metrics.tiktok_avg_views_last_10;
-      case "min_total_likes":
-        return metrics.tiktok_total_likes;
-      case "min_videos_posted":
-        return metrics.tiktok_video_count;
-      default:
-        return null;
-    }
-  }
-  if (platform === "instagram") {
-    switch (metric) {
-      case "min_followers":
-        return metrics.instagram_follower_count;
-      case "min_avg_views_last_n":
-        return metrics.instagram_avg_views_last_10;
-      case "min_videos_posted":
-        return metrics.instagram_media_count;
-      default:
-        return null;
-    }
-  }
-  return null;
-}
-
-function readBoolMetric(
-  metrics: CreatorProfileRow,
-  platform: Platform | null,
-  metric: string,
-): boolean | null {
-  if (platform === "tiktok" && metric === "verified_only") {
-    return metrics.tiktok_is_verified;
-  }
-  return null;
 }
 
 Deno.serve(async (req) => {
@@ -334,26 +217,12 @@ Deno.serve(async (req) => {
 
   const conditions = (conditionsRes.data ?? []) as ConditionRow[];
 
-  // Creator profile is created by the signup flow (US-014) so every
+  // Creator profile is created by the signup flow (US-014/US-019) so every
   // creator JWT should have one, but treat a missing row as fully-null
   // metrics — fail-closed on every numeric threshold.
-  const metrics: CreatorProfileRow = profileRes.data ?? {
-    tiktok_follower_count: null,
-    tiktok_avg_views_last_10: null,
-    tiktok_total_likes: null,
-    tiktok_video_count: null,
-    tiktok_is_verified: null,
-    instagram_follower_count: null,
-    instagram_avg_views_last_10: null,
-    instagram_media_count: null,
-  };
+  const metrics: CreatorProfileRow = profileRes.data ?? EMPTY_CREATOR_METRICS;
 
-  const failed: FailedCondition[] = [];
-  for (const c of conditions) {
-    if (c.kind !== "pre") continue;
-    const miss = evaluatePreCondition(c, metrics);
-    if (miss) failed.push(miss);
-  }
+  const failed = evaluatePreConditions(conditions, metrics);
   const eligible = failed.length === 0;
   const hasActiveApplication = (appsRes.data ?? []).length > 0;
 

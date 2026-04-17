@@ -541,7 +541,7 @@
       ],
       "priority": 36,
       "passes": false,
-      "notes": "2026-04-17: code implemented + reviewed + quality-gated (tsc/lint). Drag verification blocked by pre-existing PGRST301 RLS rejection on PostgREST — the project JWT secret has drifted from MARKETIFY_JWT_SECRET so every authed query under the custom HS256 token fails with JWSInvalidClaims. Re-confirmed blocker on 2026-04-17 via direct PostgREST probe with a real creator JWT (401 / PGRST301). Affects any logged-in screen, not just US-036. Re-run verification after the secret is re-aligned (dashboard Project Settings → JWT Settings) — the pull-to-refresh code itself is unchanged. 2026-04-17 (3rd iter): re-probed via scripts/test/probe-jwt-drift.ts (signup-lister → PostgREST /rest/v1/lister_profiles with returned token) → 401 PGRST301 \"No suitable key or wrong key type\". Drift still in effect. Supabase MCP exposes no tool to rotate the project JWT secret; requires dashboard operation (Project Settings → API → JWT Settings) — cannot be fixed from within Ralph. Probe script kept at scripts/test/probe-jwt-drift.ts so future iterations can re-check in one command (`bun run scripts/test/probe-jwt-drift.ts`)."
+      "notes": "2026-04-17: code implemented + reviewed + quality-gated (tsc/lint). Drag verification blocked by pre-existing PGRST301 RLS rejection on PostgREST \u2014 the project JWT secret has drifted from MARKETIFY_JWT_SECRET so every authed query under the custom HS256 token fails with JWSInvalidClaims. Re-confirmed blocker on 2026-04-17 via direct PostgREST probe with a real creator JWT (401 / PGRST301). Affects any logged-in screen, not just US-036. Re-run verification after the secret is re-aligned (dashboard Project Settings \u2192 JWT Settings) \u2014 the pull-to-refresh code itself is unchanged. 2026-04-17 (3rd iter): re-probed via scripts/test/probe-jwt-drift.ts (signup-lister \u2192 PostgREST /rest/v1/lister_profiles with returned token) \u2192 401 PGRST301 \"No suitable key or wrong key type\". Drift still in effect. Supabase MCP exposes no tool to rotate the project JWT secret; requires dashboard operation (Project Settings \u2192 API \u2192 JWT Settings) \u2014 cannot be fixed from within Ralph. Probe script kept at scripts/test/probe-jwt-drift.ts so future iterations can re-check in one command (`bun run scripts/test/probe-jwt-drift.ts`)."
     },
     {
       "id": "US-037",
@@ -555,7 +555,7 @@
       ],
       "priority": 37,
       "passes": true,
-      "notes": "2026-04-17: profile screen renders username (@dev_lister) + email from AuthContext and org_name from lister_profiles with '—' fallback. Sign out invokes AuthProvider.signOut which clears SecureStore and routes back to (auth) role picker via app/index.tsx role guard — verified via mobile-mcp. org_name row shows '—' in verification because US-036's JWT drift blocker still rejects PostgREST reads; the fallback + error toast are the designed behavior under that failure mode."
+      "notes": "2026-04-17: profile screen renders username (@dev_lister) + email from AuthContext and org_name from lister_profiles with '\u2014' fallback. Sign out invokes AuthProvider.signOut which clears SecureStore and routes back to (auth) role picker via app/index.tsx role guard \u2014 verified via mobile-mcp. org_name row shows '\u2014' in verification because US-036's JWT drift blocker still rejects PostgREST reads; the fallback + error toast are the designed behavior under that failure mode."
     },
     {
       "id": "US-038",
@@ -571,7 +571,7 @@
       ],
       "priority": 38,
       "passes": false,
-      "notes": "2026-04-17: skipped this iteration — same JWT-drift blocker as US-036. Re-probed today by signing a real creator JWT via auth-signup-lister edge fn → PostgREST /rest/v1/lister_profiles returned 401 PGRST301 'No suitable key or wrong key type'. The Discover feed AC hits PostgREST directly for listings + creator_profiles under the signed-in creator's JWT; until the project JWT secret is re-aligned with MARKETIFY_JWT_SECRET in the Supabase dashboard, every authed row read fails at the gateway and the feed would show an error state regardless of code. Moving forward with US-040 which routes through the get-listing-detail edge function and is NOT impacted."
+      "notes": "2026-04-17: skipped this iteration \u2014 same JWT-drift blocker as US-036. Re-probed today by signing a real creator JWT via auth-signup-lister edge fn \u2192 PostgREST /rest/v1/lister_profiles returned 401 PGRST301 'No suitable key or wrong key type'. The Discover feed AC hits PostgREST directly for listings + creator_profiles under the signed-in creator's JWT; until the project JWT secret is re-aligned with MARKETIFY_JWT_SECRET in the Supabase dashboard, every authed row read fails at the gateway and the feed would show an error state regardless of code. Moving forward with US-040 which routes through the get-listing-detail edge function and is NOT impacted."
     },
     {
       "id": "US-039",
@@ -615,8 +615,8 @@
         "Commit"
       ],
       "priority": 41,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Edge function deployed (v2). Migration 20260417270000 applied (apply_to_listing_rpc). Spec \u00a75.5 canonical: request is {listing_id, cover_note?}, responses are structured error codes (INELIGIBLE 403, LISTING_NOT_ACTIVE/LISTING_VERSION_CHANGED/ALREADY_APPLIED 409, LISTING_NOT_FOUND 404). Shared eligibility engine extracted to _shared/eligibility.ts (get-listing-detail v4 refactored to consume it). Concurrency: TS eligibility against current_version_id, RPC re-locks via SELECT...FOR UPDATE and returns LISTING_VERSION_CHANGED on drift. Fail-closed on malformed numeric_threshold (caught by code review). Smoke test covers 13 assertions."
     },
     {
       "id": "US-042",
