@@ -137,6 +137,39 @@ export type Database = {
           },
         ]
       }
+      events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          entity: string
+          entity_id: string
+          id: number
+          new_state: Json | null
+          old_state: Json | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          entity: string
+          entity_id: string
+          id?: number
+          new_state?: Json | null
+          old_state?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          entity?: string
+          entity_id?: string
+          id?: number
+          new_state?: Json | null
+          old_state?: Json | null
+        }
+        Relationships: []
+      }
       lister_profiles: {
         Row: {
           created_at: string
@@ -421,6 +454,76 @@ export type Database = {
             columns: ["social_link_id"]
             isOneToOne: false
             referencedRelation: "social_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          payload: Json
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          payload: Json
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
+          payload?: Json
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_tokens: {
+        Row: {
+          created_at: string
+          expo_token: string
+          id: string
+          last_seen_at: string
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expo_token: string
+          id?: string
+          last_seen_at?: string
+          platform: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expo_token?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
