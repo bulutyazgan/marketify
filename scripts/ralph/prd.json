@@ -434,8 +434,8 @@
         "Commit"
       ],
       "priority": 29,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Spec gap: AC says URL '/_dev/primitives' but expo-router (confirmed v6.0.23 via Context7) silently excludes underscore-prefixed directories from routing — route lives at 'app/(dev)/primitives.tsx' which resolves to '/primitives' (route group parens are invisible in the URL). '__DEV__' gating is runtime via '<Redirect href=\"/\" />' in the prod branch. app/index.tsx previously held the ad-hoc primitives preview used for US-025-US-028 verification; moved the content into 'src/screens/_dev/PrimitivesPreview.tsx' (named export) and turned the root into a dev-redirect (to '/(dev)/primitives') + prod 'Marketify' placeholder — US-031 will replace index.tsx entirely with the role-aware router, so the prod placeholder is transitional. Mobile-mcp confirmed route redirect works + all primitives render + bottom sheet opens; toast not captured in final screenshot because it renders at absolute top of screen and we were scrolled to the bottom (component already exercised in US-028 verification). Screenshots under scripts/ralph/screenshots/us-029-{top,cards,sheet,toast}.png."
     },
     {
       "id": "US-030",
