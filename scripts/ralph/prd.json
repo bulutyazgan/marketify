@@ -377,8 +377,8 @@
         "Commit"
       ],
       "priority": 25,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Spec gap: story said 'snappy spring', docs/design.md §1.4 line 100 says spring.soft for press feedback — followed spec (SPRING_SOFT). Spec gap: docs/design.md §4.1 line 722 lists `variant` as a ButtonPrimary prop but does NOT define the variant values; left unexpanded (single CTA variant only). Code-reviewer caught that iOS `shadowOffset` is a compound prop and not animatable through Reanimated `useAnimatedStyle` — switched to animating `shadowOpacity` 1→0 while translating (3,3), which reads as a shadow collapse per §1.5. `withReducedMotion<WithSpringConfig>(SPRING_SOFT, reduced)` requires explicit generic widening because `as const satisfies WithSpringConfig` on the preset narrows to a readonly literal that doesn't satisfy the helper's `C extends {reduceMotion?: ReduceMotion}` constraint under strict mode — captured in Codebase Patterns. Mid-press screenshot via mobile-mcp long-press is unreliable (3px translate + opacity fade too subtle to distinguish at capture timing); rest-state screenshot + code-review + tsc + lint are the authoritative verification."
     },
     {
       "id": "US-026",
