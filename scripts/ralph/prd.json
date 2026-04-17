@@ -449,8 +449,8 @@
         "Commit"
       ],
       "priority": 30,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Spec gap: AC names MMKV as the JWT store, but react-native-mmkv v4 is a Nitro module incompatible with Expo Go (current iteration loop still targets Expo Go — dev-client build deferred to US-031 per pattern 27). Swapped the MMKV pieces to expo-secure-store (Expo SDK, Keychain-backed, works in Expo Go). Functional intent — persistent secure JWT storage + in-memory cache so the Supabase custom fetch stays synchronous — is fully delivered. STORAGE_KEYS.jwt = 'marketify.jwt' preserves the key name from the AC. react-native-mmkv stays in package.json so US-031 can revisit when the dev-client build lands if the team wants the raw MMKV perf. app.config.ts added to surface SUPABASE_URL + SUPABASE_ANON_KEY on Constants.expoConfig.extra (process.env auto-loaded by Expo CLI from .env). AuthProvider gates children on an async `hydrated` flag (returns null while SecureStore reads settle) — trade-off of moving from sync MMKV to async SecureStore."
     },
     {
       "id": "US-031",
