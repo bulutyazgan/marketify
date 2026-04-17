@@ -18,6 +18,7 @@ import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
+import { ApplySheet, type ApplyFailure } from '@/screens/listing-detail/ApplySheet';
 
 // US-040 — Campaign detail screen. Gated under the creator tab group so
 // the shared TabBar stays visible; route matches the story AC
@@ -44,9 +45,11 @@ import type { Database } from '@/types/supabase';
 //     ineligible              → disabled CTA "Not eligible yet"
 //     inactive listing        → no CTA, status banner at top
 //
-// Apply flow itself lands in US-041 (server-side re-check edge function)
-// + US-042 (modal + toast). This screen's CTA currently surfaces a toast
-// stub so the tap target is exercised during mobile-mcp verification.
+// Apply flow: tapping the CTA opens the ApplySheet (US-042) which posts
+// to apply-to-listing (US-041). On success we toast + route to the
+// Applied tab; on a server-state change (version bump, paused listing,
+// already-applied, ineligible, not-found) we close the sheet and reload
+// the detail so the eligibility rail / CTA reflect the new reality.
 
 type ListingRow = Database['public']['Tables']['listings']['Row'];
 type ConditionRow = Database['public']['Tables']['listing_conditions']['Row'];
@@ -81,6 +84,7 @@ export default function ListingDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { show: showToast } = useToast();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const [applySheetOpen, setApplySheetOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) {
@@ -132,11 +136,42 @@ export default function ListingDetail() {
   }, []);
 
   const onApply = useCallback(() => {
+    setApplySheetOpen(true);
+  }, []);
+
+  const onApplied = useCallback(() => {
+    setApplySheetOpen(false);
     showToast({
-      message: 'Apply flow lands in US-042.',
+      message: 'Application sent.',
       variant: 'success',
     });
+    // Per AC: route to the Applied tab. The actual route is
+    // `/(creator)/applications` (US-031 layout); the AC's "(creator)/applied"
+    // refers to the same logical tab. Defer the route swap until after the
+    // BottomSheet's spring-out animation has settled (SPRING_SNAPPY ~300ms),
+    // otherwise the sheet's slide-down plays on top of the new screen.
+    setTimeout(() => router.replace('/(creator)/applications'), 350);
   }, [showToast]);
+
+  const onApplyFailure = useCallback(
+    (failure: ApplyFailure) => {
+      setApplySheetOpen(false);
+      // Reload so the eligibility rail / CTA reflect the new server reality
+      // (version bumped, listing paused, an existing application surfaced, etc.).
+      if (
+        failure.kind === 'version_changed' ||
+        failure.kind === 'not_active' ||
+        failure.kind === 'already_applied' ||
+        failure.kind === 'ineligible' ||
+        failure.kind === 'not_found'
+      ) {
+        void load();
+      }
+    },
+    [load],
+  );
+
+  const listingTitle = state.kind === 'ok' ? state.data.listing.title : '';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -150,6 +185,16 @@ export default function ListingDetail() {
       ) : (
         <DetailBody data={state.data} onApply={onApply} />
       )}
+      {id ? (
+        <ApplySheet
+          visible={applySheetOpen}
+          listingId={id}
+          listingTitle={listingTitle}
+          onDismiss={() => setApplySheetOpen(false)}
+          onApplied={onApplied}
+          onServerStateChanged={onApplyFailure}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
