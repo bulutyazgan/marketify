@@ -478,8 +478,8 @@
         "Commit"
       ],
       "priority": 32,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Collapsed design.md §2.1's two-step Welcome + Role Select flow into a single screen per the story's literal AC (two large pressables route directly to signup). Target signup routes didn't exist yet — created minimal text-only stubs at app/(auth)/signup/{creator,lister}.tsx as navigation targets; US-033 and US-034 replace them with real forms. RolePickerCard press animation extends the CampaignCard pattern (translateX/Y + shadowOpacity) with the Button pattern's scale(0.97) component per code-reviewer finding — Codebase Pattern #78 specifies all three properties drive off one shared value, and the existing CampaignCard quietly omits scale; deliberately aligned to the pattern rather than the existing inconsistency. Kept the __DEV__ DevRolePicker block for the dev-bypass signin path (separate from the production role picker); the iOS Keychain-backed SecureStore survived Expo Go reinstall which made mobile-mcp verification require a manual sign-out via the Creator Profile tab first. Screenshots: scripts/ralph/screenshots/us-032-{role-picker,signup-creator,signup-lister}.png."
     },
     {
       "id": "US-033",
