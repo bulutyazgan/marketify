@@ -114,6 +114,229 @@ export type Database = {
           },
         ]
       }
+      listing_conditions: {
+        Row: {
+          bool_threshold: boolean | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["condition_kind"]
+          listing_version_id: string
+          metric: Database["public"]["Enums"]["condition_metric"]
+          numeric_threshold: number | null
+          operator: string
+          platform: Database["public"]["Enums"]["platform"] | null
+          text_threshold: string | null
+        }
+        Insert: {
+          bool_threshold?: boolean | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["condition_kind"]
+          listing_version_id: string
+          metric: Database["public"]["Enums"]["condition_metric"]
+          numeric_threshold?: number | null
+          operator?: string
+          platform?: Database["public"]["Enums"]["platform"] | null
+          text_threshold?: string | null
+        }
+        Update: {
+          bool_threshold?: boolean | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["condition_kind"]
+          listing_version_id?: string
+          metric?: Database["public"]["Enums"]["condition_metric"]
+          numeric_threshold?: number | null
+          operator?: string
+          platform?: Database["public"]["Enums"]["platform"] | null
+          text_threshold?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_conditions_listing_version_id_fkey"
+            columns: ["listing_version_id"]
+            isOneToOne: false
+            referencedRelation: "listing_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_versions: {
+        Row: {
+          changed_fields: string[]
+          created_at: string
+          currency: string
+          id: string
+          listing_id: string
+          max_submissions: number | null
+          previous_version_id: string | null
+          price_cents: number
+          snapshot: Json
+          version_number: number
+        }
+        Insert: {
+          changed_fields?: string[]
+          created_at?: string
+          currency: string
+          id?: string
+          listing_id: string
+          max_submissions?: number | null
+          previous_version_id?: string | null
+          price_cents: number
+          snapshot: Json
+          version_number: number
+        }
+        Update: {
+          changed_fields?: string[]
+          created_at?: string
+          currency?: string
+          id?: string
+          listing_id?: string
+          max_submissions?: number | null
+          previous_version_id?: string | null
+          price_cents?: number
+          snapshot?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_versions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_versions_previous_version_id_fkey"
+            columns: ["previous_version_id"]
+            isOneToOne: false
+            referencedRelation: "listing_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listings: {
+        Row: {
+          active_pending_applications_count: number
+          approved_submissions_count: number
+          category: string
+          closed_at: string | null
+          created_at: string
+          currency: string
+          current_version_id: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          lister_id: string
+          max_submissions: number | null
+          min_followers_instagram: number | null
+          min_followers_tiktok: number | null
+          price_cents: number
+          published_at: string | null
+          status: Database["public"]["Enums"]["listing_status"]
+          title: string
+          updated_at: string
+          version_bump_reason: string | null
+          version_number: number
+        }
+        Insert: {
+          active_pending_applications_count?: number
+          approved_submissions_count?: number
+          category?: string
+          closed_at?: string | null
+          created_at?: string
+          currency?: string
+          current_version_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          lister_id: string
+          max_submissions?: number | null
+          min_followers_instagram?: number | null
+          min_followers_tiktok?: number | null
+          price_cents: number
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["listing_status"]
+          title: string
+          updated_at?: string
+          version_bump_reason?: string | null
+          version_number?: number
+        }
+        Update: {
+          active_pending_applications_count?: number
+          approved_submissions_count?: number
+          category?: string
+          closed_at?: string | null
+          created_at?: string
+          currency?: string
+          current_version_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          lister_id?: string
+          max_submissions?: number | null
+          min_followers_instagram?: number | null
+          min_followers_tiktok?: number | null
+          price_cents?: number
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["listing_status"]
+          title?: string
+          updated_at?: string
+          version_bump_reason?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listings_current_version_fk"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "listing_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_lister_id_fkey"
+            columns: ["lister_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sample_videos: {
+        Row: {
+          caption: string | null
+          id: string
+          listing_version_id: string
+          platform: Database["public"]["Enums"]["platform"]
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          id?: string
+          listing_version_id: string
+          platform: Database["public"]["Enums"]["platform"]
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          id?: string
+          listing_version_id?: string
+          platform?: Database["public"]["Enums"]["platform"]
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sample_videos_listing_version_id_fkey"
+            columns: ["listing_version_id"]
+            isOneToOne: false
+            referencedRelation: "listing_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_links: {
         Row: {
           created_at: string

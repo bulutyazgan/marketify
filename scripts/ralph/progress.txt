@@ -33,6 +33,8 @@ Started: (will be replaced on first run)
 - **`app_private` schema was created in US-003** via a companion migration (`us_003_app_private_schema`). Revoke is already in place for `anon` and `authenticated`. Triggers / security-definer functions in later stories should target this schema.
 - **Reference `citext` as `extensions.citext` in every migration.** US-003 installed it with `with schema extensions`; the default `search_path` used by migrations does not include that schema, so an unqualified `citext` fails to resolve.
 - **Supabase auto-enables RLS on new `public.*` tables** on this project. New table migrations will show up in `get_advisors({type:'security'})` as INFO-level `rls_enabled_no_policy` (not `rls_disabled`). These INFO findings are benign until policies land in US-009 — no commit-blocking action needed.
+- **`listing_conditions` is a single data-driven table**, not separate pre/post tables. Discriminated by `condition_kind` enum ('pre' | 'post') per docs/tech-architecture.md §4.7 block 8. Pre-condition rows use metrics like `min_followers`; post-condition rows use `post_*` metrics. The story US-005 text named separate tables but the spec wins.
+- **Circular FK pattern:** `listings.current_version_id` references `listing_versions(id)` but both tables are in the same migration. Create the `listings` table with the column nullable, create `listing_versions`, then `alter table public.listings add constraint ... foreign key ...`. Spec follows this pattern (§4.7 lines 659-661).
 
 ---
 
@@ -85,4 +87,17 @@ Started: (will be replaced on first run)
   - `bunx expo install <pkg>` pins SDK-compatible versions; it just downgraded transitive worklets 0.8.1 → 0.5.1 to match SDK 54. Trust it.
   - `bunx expo install expo-router` auto-appends `"plugins": ["expo-router", ...]` to `app.json`
   - mobile-mcp's `mobile_open_url` refuses non-http(s) schemes; use `xcrun simctl openurl <udid> exp://...` to deep-link into Expo Go
+---
+
+## 2026-04-17 10:30 — US-005
+- Applied `us_005_listing_tables` via Supabase MCP: `public.listings` (20 cols incl. plain-integer `min_followers_tiktok`/`_instagram` with partial btree indexes on `status='active'`), `public.listing_versions` with `(listing_id, version_number)` unique, self-FK `previous_version_id`, and the circular FK `listings.current_version_id → listing_versions.id` closed via a post-create `alter table`.
+- Added `public.listing_conditions` (data-driven pre+post rows discriminated by `condition_kind` enum per spec §4.7 block 8, not separate `_pre_`/`_post_` tables as the story text suggested) and `public.sample_videos` (§4.7 block 9, same version-scoped grouping).
+- Files changed: `supabase/migrations/20260417100000_us_005_listing_tables.sql` (new), `src/types/supabase.ts`
+- Quality checks: tsc ✓ / lint ✓ / supabase advisors ✓ (only INFO `rls_enabled_no_policy` on the 4 new tables — expected; policies land in US-009) / mobile-mcp n/a (DB-only story)
+- Code-reviewer verdict: approved (one cosmetic note on explicit vs anonymous index naming — no functional impact, not fixed)
+- Spec gap: Story acceptance said `listing_pre_conditions` + `listing_post_conditions`; spec §4.7 block 8 defines a single `listing_conditions` table discriminated by the `condition_kind` enum. Followed the spec. Human to acknowledge if we actually wanted split tables — unlikely given the cascade trigger and eligibility engine both read from the single table.
+- **Learnings for future iterations:**
+  - When a story's table-naming contradicts the spec DDL, the spec wins (per Ralph instructions) — document as a Spec gap in the migration header + progress.txt.
+  - `sample_videos` belongs with listing_versions (version-scoped FK); bundle it with the listing-tables migration rather than deferring — cascade trigger in US-010 treats "sample videos" as a versioned field.
+  - Anonymous `create index on public.tbl (...)` in the spec is a style choice, not a requirement. Explicit names are fine and arguably better for later reindex operations; the reviewer flagged it as a benign deviation.
 ---
