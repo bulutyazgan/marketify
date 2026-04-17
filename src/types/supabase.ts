@@ -652,13 +652,6 @@ export type Database = {
             foreignKeyName: "submission_videos_submission_id_fkey"
             columns: ["submission_id"]
             isOneToOne: false
-            referencedRelation: "submission_reuse_view"
-            referencedColumns: ["submission_id"]
-          },
-          {
-            foreignKeyName: "submission_videos_submission_id_fkey"
-            columns: ["submission_id"]
-            isOneToOne: false
             referencedRelation: "submissions"
             referencedColumns: ["id"]
           },
@@ -750,16 +743,18 @@ export type Database = {
       }
     }
     Views: {
-      submission_reuse_view: {
-        Row: {
-          reuse_count: number | null
-          submission_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_user_id: { Args: never; Returns: string }
+      current_user_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      submission_reuse_count: {
+        Args: { p_submission_id: string }
+        Returns: number
+      }
     }
     Enums: {
       application_status:
