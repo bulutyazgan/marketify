@@ -1,4 +1,4 @@
-// Edge function: apify-webhook (US-016, US-017)
+// Edge function: apify-webhook (US-016, US-017, US-018)
 //
 // Contract:
 //   POST (headers include X-Apify-Webhook-Secret)
@@ -21,14 +21,14 @@
 //   docs/tech-architecture.md §3g). Deploy with --no-verify-jwt.
 //
 // Idempotency: each scrape_mode branch dispatches to its own persistence RPC
-//   (public.apify_webhook_persist_tiktok_profile, ..._ig_details) that inserts
-//   one metric_snapshots row keyed on apify_run_id; the partial unique index
-//   metric_snapshots_run_uniq makes the second webhook for the same run a
-//   no-op. Each RPC returns {inserted, duplicate, snapshot_id?}.
+//   (public.apify_webhook_persist_tiktok_profile, ..._ig_details, ..._ig_posts)
+//   that inserts one metric_snapshots row keyed on apify_run_id; the partial
+//   unique index metric_snapshots_run_uniq makes the second webhook for the
+//   same run a no-op. Each RPC returns {inserted, duplicate, snapshot_id?}.
 //
-// Scope (US-016, US-017): tiktok_profile + ig_details branches. ig_posts
-//   returns 200 { skipped: 'unsupported_scrape_mode' } so Apify doesn't retry;
-//   that branch ships with US-018.
+// Scope (US-016, US-017, US-018): tiktok_profile, ig_details, and ig_posts
+//   branches are all live. Any other scrape_mode value returns 200
+//   { skipped: 'unsupported_scrape_mode' } so Apify does not retry.
 //
 // Pre-refreshing-row note (US-020 handoff): each RPC currently INSERTs (never
 //   UPDATEs), so assumes no existing snapshot row carries this apify_run_id.
@@ -78,6 +78,12 @@ interface InstagramDetailsItem {
   followsCount?: number;
   postsCount?: number;
   verified?: boolean;
+}
+
+interface InstagramPostItem {
+  type?: string;
+  videoPlayCount?: number;
+  videoViewCount?: number;
 }
 
 type MetricStatus = "fresh" | "failed";
@@ -162,6 +168,28 @@ function meanPlayCount(items: TikTokItem[]): number | null {
   return Math.round(sum / views.length);
 }
 
+// Per spec §3c: filter posts to type === "Video", pick videoPlayCount with
+// videoViewCount as fallback, return null if zero videos so the UI can surface
+// "Not enough video posts to compute". The Apify actor input caps results at
+// 10, so no slice is needed here.
+function meanInstagramVideoViews(items: InstagramPostItem[]): number | null {
+  const views: number[] = [];
+  for (const it of items) {
+    if (it?.type !== "Video") continue;
+    const candidate = typeof it.videoPlayCount === "number" &&
+        Number.isFinite(it.videoPlayCount)
+      ? it.videoPlayCount
+      : (typeof it.videoViewCount === "number" &&
+          Number.isFinite(it.videoViewCount)
+        ? it.videoViewCount
+        : null);
+    if (candidate !== null) views.push(candidate);
+  }
+  if (views.length === 0) return null;
+  const sum = views.reduce((acc, n) => acc + n, 0);
+  return Math.round(sum / views.length);
+}
+
 async function fetchDatasetItems(
   datasetId: string,
   apifyKey: string,
@@ -215,10 +243,13 @@ Deno.serve(async (req) => {
   }
 
   const scrapeMode = body.scrape_mode as ScrapeMode;
-  if (scrapeMode !== "tiktok_profile" && scrapeMode !== "ig_details") {
-    // ig_posts is wired in US-018; return 200 so Apify does not retry. The
-    // social_link_id is intentionally not logged here — the row will still be
-    // stuck 'refreshing' until the fail-stuck-refreshing cron janitor
+  if (
+    scrapeMode !== "tiktok_profile" &&
+    scrapeMode !== "ig_details" &&
+    scrapeMode !== "ig_posts"
+  ) {
+    // Unknown scrape_mode: return 200 so Apify does not retry. The row stays
+    // 'refreshing' until the fail-stuck-refreshing cron janitor
     // (docs/tech-architecture.md §15) flips it to 'failed'.
     return jsonResponse(200, { ok: true, skipped: "unsupported_scrape_mode" });
   }
@@ -268,12 +299,19 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // Single source of truth for the RPC name per branch — used both as the
+  // .rpc() call argument and in the error-log context, so the two stay in
+  // sync if either side is renamed.
+  const rpcName = scrapeMode === "tiktok_profile"
+    ? "apify_webhook_persist_tiktok_profile"
+    : scrapeMode === "ig_details"
+    ? "apify_webhook_persist_ig_details"
+    : "apify_webhook_persist_ig_posts";
+
   let result: PersistResult | null = null;
   let rpcError: { code?: string; message?: string } | null = null;
-  let rpcName: string;
 
   if (scrapeMode === "tiktok_profile") {
-    rpcName = "apify_webhook_persist_tiktok_profile";
     let followerCount: number | null = null;
     let followingCount: number | null = null;
     let totalLikes: number | null = null;
@@ -298,7 +336,7 @@ Deno.serve(async (req) => {
       avgViewsLast10 = meanPlayCount(tiktokItems);
     }
     const { data, error } = await supabase.rpc(
-      "apify_webhook_persist_tiktok_profile",
+      rpcName,
       {
         p_run_id: runId,
         p_social_link_id: socialLinkId,
@@ -316,12 +354,11 @@ Deno.serve(async (req) => {
     );
     result = data as PersistResult | null;
     rpcError = error;
-  } else {
+  } else if (scrapeMode === "ig_details") {
     // ig_details — details[0] yields follower/following/posts/verified per
     // docs/tech-architecture.md §3c. avg_views_last_10 is owned by ig_posts,
     // so leave it NULL here; the denorm trigger for ig_details updates only
     // instagram_follower_count + instagram_media_count + metrics_fetched_at.
-    rpcName = "apify_webhook_persist_ig_details";
     let followerCount: number | null = null;
     let followingCount: number | null = null;
     let mediaCount: number | null = null;
@@ -345,7 +382,7 @@ Deno.serve(async (req) => {
       }
     }
     const { data, error } = await supabase.rpc(
-      "apify_webhook_persist_ig_details",
+      rpcName,
       {
         p_run_id: runId,
         p_social_link_id: socialLinkId,
@@ -355,6 +392,29 @@ Deno.serve(async (req) => {
         p_following_count: followingCount,
         p_media_count: mediaCount,
         p_is_verified: isVerified,
+        p_raw_payload: rawPayload as never,
+        p_error_message: errorMessage,
+      },
+    );
+    result = data as PersistResult | null;
+    rpcError = error;
+  } else {
+    // ig_posts — only avg_views_last_10 is owned here (spec §4.7
+    // column-ownership comments). The denorm trigger for ig_posts mirrors
+    // this single value into creator_profiles.instagram_avg_views_last_10
+    // and bumps metrics_fetched_at.
+    let avgViewsLast10: number | null = null;
+    if (items) {
+      avgViewsLast10 = meanInstagramVideoViews(items as InstagramPostItem[]);
+    }
+    const { data, error } = await supabase.rpc(
+      rpcName,
+      {
+        p_run_id: runId,
+        p_social_link_id: socialLinkId,
+        p_status: nextStatus,
+        p_fetched_at: fetchedAt,
+        p_avg_views_last_10: avgViewsLast10,
         p_raw_payload: rawPayload as never,
         p_error_message: errorMessage,
       },

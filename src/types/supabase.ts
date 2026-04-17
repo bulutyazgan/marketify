@@ -761,6 +761,18 @@ export type Database = {
         }
         Returns: Json
       }
+      apify_webhook_persist_ig_posts: {
+        Args: {
+          p_avg_views_last_10: number
+          p_error_message: string
+          p_fetched_at: string
+          p_raw_payload: Json
+          p_run_id: string
+          p_social_link_id: string
+          p_status: Database["public"]["Enums"]["metric_status"]
+        }
+        Returns: Json
+      }
       apify_webhook_persist_tiktok_profile: {
         Args: {
           p_avg_views_last_10: number

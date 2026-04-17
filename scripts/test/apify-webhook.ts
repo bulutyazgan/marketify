@@ -1,4 +1,5 @@
-// Smoke test for the deployed apify-webhook edge function (US-016, US-017).
+// Smoke test for the deployed apify-webhook edge function (US-016, US-017,
+// US-018).
 //
 // Usage: bun run scripts/test/apify-webhook.ts
 // Requires SUPABASE_URL, SUPABASE_ANON_KEY, APIFY_WEBHOOK_SECRET in .env.
@@ -8,16 +9,19 @@
 // MCP verification, not here.
 //
 // Asserts:
-//   1. Missing X-Apify-Webhook-Secret → 401 UNAUTHORIZED
-//   2. Wrong secret → 401 UNAUTHORIZED (constant-time reject)
-//   3. Malformed JSON body with valid secret → 400 INVALID_JSON
-//   4. Missing required fields → 400 INVALID_REQUEST
-//   5. scrape_mode='ig_posts' → 200 { skipped:'unsupported_scrape_mode' }
-//      (ig_posts ships in US-018; tiktok_profile+ig_details are live now)
-//   6. tiktok_profile + ACTOR.RUN.FAILED → 200 { inserted:true, duplicate:false }
-//   7. Replay same tiktok_profile run_id → 200 { inserted:false, duplicate:true }
-//   8. ig_details + ACTOR.RUN.FAILED → 200 { inserted:true, duplicate:false }
-//   9. Replay same ig_details run_id → 200 { inserted:false, duplicate:true }
+//   1.  Missing X-Apify-Webhook-Secret → 401 UNAUTHORIZED
+//   2.  Wrong secret → 401 UNAUTHORIZED (constant-time reject)
+//   3.  Malformed JSON body with valid secret → 400 INVALID_JSON
+//   4.  Missing required fields → 400 INVALID_REQUEST
+//   5.  Unknown scrape_mode → 200 { skipped:'unsupported_scrape_mode' }
+//       (defensive coverage for the catch-all branch; tiktok_profile,
+//        ig_details, and ig_posts are all live)
+//   6.  tiktok_profile + ACTOR.RUN.FAILED → 200 { inserted:true, duplicate:false }
+//   7.  Replay same tiktok_profile run_id → 200 { inserted:false, duplicate:true }
+//   8.  ig_details + ACTOR.RUN.FAILED → 200 { inserted:true, duplicate:false }
+//   9.  Replay same ig_details run_id → 200 { inserted:false, duplicate:true }
+//   10. ig_posts + ACTOR.RUN.FAILED → 200 { inserted:true, duplicate:false }
+//   11. Replay same ig_posts run_id → 200 { inserted:false, duplicate:true }
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
@@ -131,14 +135,14 @@ function expect(label: string, cond: boolean, ctx: unknown) {
   );
 }
 
-// 5. ig_posts scrape_mode → unsupported_scrape_mode (ig_posts ships US-018)
+// 5. Unknown scrape_mode → defensive unsupported_scrape_mode short-circuit
 {
   const r = await postRaw(
-    basePayload({ scrape_mode: "ig_posts" }),
+    basePayload({ scrape_mode: "bogus_mode" }),
     { "X-Apify-Webhook-Secret": webhookSecret },
   );
   expect(
-    "ig_posts → 200 skipped",
+    "unknown scrape_mode → 200 skipped",
     r.status === 200 && r.data?.skipped === "unsupported_scrape_mode",
     r,
   );
@@ -200,6 +204,42 @@ const failedIgDetailsRunBody = basePayload({
   });
   expect(
     "replay same ig_details run_id → 200 duplicate",
+    r.status === 200 && r.data?.inserted === false && r.data?.duplicate === true,
+    r,
+  );
+}
+
+// 10. ig_posts + FAILED event → inserts failed snapshot against the IG seed link
+const igPostsRunId = `us018_ig_posts_${unique}_${Math.random().toString(36).slice(2, 10)}`;
+const failedIgPostsRunBody = basePayload({
+  scrape_mode: "ig_posts",
+  social_link_id: SEED_INSTAGRAM_SOCIAL_LINK_ID,
+  resource: {
+    id: igPostsRunId,
+    defaultDatasetId: `dataset_ig_posts_${unique}`,
+    status: "FAILED",
+    actId: "apify~instagram-scraper",
+  },
+  run_id: igPostsRunId,
+});
+{
+  const r = await postRaw(failedIgPostsRunBody, {
+    "X-Apify-Webhook-Secret": webhookSecret,
+  });
+  expect(
+    "ig_posts FAILED → 200 inserted",
+    r.status === 200 && r.data?.inserted === true && r.data?.duplicate === false,
+    r,
+  );
+}
+
+// 11. Same ig_posts run_id replay → idempotent duplicate
+{
+  const r = await postRaw(failedIgPostsRunBody, {
+    "X-Apify-Webhook-Secret": webhookSecret,
+  });
+  expect(
+    "replay same ig_posts run_id → 200 duplicate",
     r.status === 200 && r.data?.inserted === false && r.data?.duplicate === true,
     r,
   );
