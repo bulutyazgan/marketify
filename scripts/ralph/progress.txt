@@ -26,6 +26,11 @@ Started: (will be replaced on first run)
 - **App entry is `"main": "expo-router/entry"`** in package.json. The old `index.ts` + `App.tsx` from US-001 were removed. Root layout lives at `app/_layout.tsx`; initial route at `app/index.tsx`.
 - **Expo Go + SDK 54 + new-arch + `<Stack>` from expo-router throws at runtime**: `Exception in HostFunction: TypeError: expected dynamic type 'boolean', but had type 'string'`. For US-002 the root uses `<Slot />` as the minimal root. US-031 will revisit with a dev-client build (`expo run:ios`) where Stack + Tabs should work.
 - **iOS simulator boot flow for mobile-mcp verification:** `xcrun simctl boot <name>` → `open -a Simulator` → `bunx expo start --ios` in background → `xcrun simctl openurl <udid> exp://127.0.0.1:8081` if Expo Go doesn't auto-open the project. mobile-mcp's `mobile_open_url` blocks `exp://` schemes by default, so shell out.
+- **Supabase project:** `marketify` (ref=`zioiiruwdliftpmcumav`, region=`ap-southeast-1`). All MCP DB calls use this `project_id`. Pre-installed extensions: pgcrypto, uuid-ossp, pg_stat_statements, supabase_vault, pg_graphql. pg_cron + citext available on request.
+- **Install extensions `with schema extensions`** (e.g. `create extension if not exists citext with schema extensions`) to keep advisors clean. `pg_cron` is the exception: Supabase requires it in `pg_catalog`, leave it unqualified.
+- **Enum canonical list is docs/tech-architecture.md §4.2** (lines 399-427). After generating types, verify `src/types/supabase.ts` Constants block matches it exactly.
+- **Local migration files live under `supabase/migrations/` with `YYYYMMDDHHMMSS_us_NNN_description.sql`.** Keep filename and MCP migration `name` (no timestamp prefix) consistent. Commit every applied migration — `list_migrations` is the DB side, the file is the source of truth for fresh applies.
+- **`app_private` schema was created in US-003** via a companion migration (`us_003_app_private_schema`). Revoke is already in place for `anon` and `authenticated`. Triggers / security-definer functions in later stories should target this schema.
 
 ---
 
@@ -40,6 +45,18 @@ Started: (will be replaced on first run)
   - `expo lint` scans `src|app|components` by default — keep at least one lintable file in any of those dirs or eslint errors "all files ignored"
   - `expo/tsconfig.base` does NOT set `strict`; our own tsconfig adds it
   - The initial `npx expo lint` auto-installs `eslint` + `eslint-config-expo` and auto-writes `eslint.config.js` — noted in package.json devDeps (intentional)
+---
+
+## 2026-04-17 08:10 — US-003
+- Applied `us_003_baseline_enums` (pgcrypto/citext in `extensions`, pg_cron in `pg_catalog`, all 11 enums per §4.2) and companion `us_003_app_private_schema` (empty schema + revoke) via Supabase MCP on project `marketify` (ref `zioiiruwdliftpmcumav`).
+- Regenerated `src/types/supabase.ts` — 11 enums + Constants block match the spec. Added `SUPABASE_URL` + `SUPABASE_ANON_KEY` stubs to `.env.example` and populated values into `.env` without echoing them.
+- Files changed: `supabase/migrations/20260417080000_us_003_baseline_enums.sql`, `supabase/migrations/20260417080100_us_003_app_private_schema.sql`, `src/types/supabase.ts` (new; `.gitkeep` removed), `.env.example`, `.env` (local — gitignored)
+- Quality checks: tsc ✓ / lint ✓ / supabase advisors ✓ (zero findings) / mobile-mcp n/a (DB-only story)
+- Code-reviewer verdict: issues fixed in this commit (added `app_private` schema migration; clarified pg_cron comment)
+- **Learnings for future iterations:**
+  - Reviewer flagged missing `app_private` schema — §4.7's extension block includes schema + revoke. Future baseline migrations should follow §4.7 ordering even when the immediate story doesn't need the schema yet.
+  - Security advisor WARNs on any extension in `public`; always pin to `extensions` schema except for `pg_cron`.
+  - `apply_migration` stores the SQL body verbatim; editing the local `.sql` file afterwards drifts from the migrations table. If you must change DB state, add another migration.
 ---
 
 ## 2026-04-17 07:45 — US-002
