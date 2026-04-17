@@ -91,8 +91,28 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   if [[ "$TOOL" == "amp" ]]; then
     OUTPUT=$(cat "$SCRIPT_DIR/prompt.md" | amp --dangerously-allow-all 2>&1 | tee /dev/stderr) || true
   else
-    # Claude Code: use --dangerously-skip-permissions for autonomous operation, --print for output
-    OUTPUT=$(claude --dangerously-skip-permissions --print < "$SCRIPT_DIR/CLAUDE.md" 2>&1 | tee /dev/stderr) || true
+    # Claude Code: use --dangerously-skip-permissions for autonomous operation, --print for output.
+    # Watchdog: mobile-mcp stdio / iOS sim hangs have caused --print to wait indefinitely for MCP
+    # children to close even after the iteration's work has committed. Kill the worker (SIGTERM,
+    # then SIGKILL after 10s) if it exceeds MAX_ITER_SECONDS so the loop advances.
+    MAX_ITER_SECONDS=${MAX_ITER_SECONDS:-2700}
+    ITER_OUT=$(mktemp -t ralph-iter) || ITER_OUT="/tmp/ralph-iter-$$"
+    : > "$ITER_OUT"
+    # Live-stream the iteration output to stdout (ralph.log) so tool calls appear in real time.
+    # --verbose makes claude --print emit tool calls + thinking as they happen instead of buffering
+    # the final message.
+    tail -F "$ITER_OUT" 2>/dev/null &
+    TAIL_PID=$!
+    claude --dangerously-skip-permissions --verbose --print < "$SCRIPT_DIR/CLAUDE.md" > "$ITER_OUT" 2>&1 &
+    CLAUDE_PID=$!
+    ( sleep "$MAX_ITER_SECONDS"; kill -TERM "$CLAUDE_PID" 2>/dev/null; sleep 10; kill -KILL "$CLAUDE_PID" 2>/dev/null ) &
+    WATCHDOG_PID=$!
+    wait "$CLAUDE_PID" 2>/dev/null || true
+    sleep 1
+    kill "$TAIL_PID" 2>/dev/null || true; wait "$TAIL_PID" 2>/dev/null || true
+    kill "$WATCHDOG_PID" 2>/dev/null || true; wait "$WATCHDOG_PID" 2>/dev/null || true
+    OUTPUT=$(cat "$ITER_OUT" 2>/dev/null || true)
+    rm -f "$ITER_OUT"
   fi
   
   # Check for completion signal
