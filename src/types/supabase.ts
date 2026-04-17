@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      applications: {
+        Row: {
+          cover_note: string | null
+          created_at: string
+          creator_id: string
+          decided_at: string | null
+          decision_note: string | null
+          id: string
+          listing_id: string
+          listing_version_id: string
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+        }
+        Insert: {
+          cover_note?: string | null
+          created_at?: string
+          creator_id: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          listing_id: string
+          listing_version_id: string
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Update: {
+          cover_note?: string | null
+          created_at?: string
+          creator_id?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          listing_id?: string
+          listing_version_id?: string
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_listing_version_id_fkey"
+            columns: ["listing_version_id"]
+            isOneToOne: false
+            referencedRelation: "listing_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creator_profiles: {
         Row: {
           bio: string | null
@@ -390,6 +451,108 @@ export type Database = {
           },
         ]
       }
+      submission_videos: {
+        Row: {
+          external_id: string | null
+          id: string
+          last_validated_at: string | null
+          oembed_cached: Json | null
+          platform: Database["public"]["Enums"]["platform"]
+          sort_order: number
+          submission_id: string
+          url: string
+        }
+        Insert: {
+          external_id?: string | null
+          id?: string
+          last_validated_at?: string | null
+          oembed_cached?: Json | null
+          platform: Database["public"]["Enums"]["platform"]
+          sort_order?: number
+          submission_id: string
+          url: string
+        }
+        Update: {
+          external_id?: string | null
+          id?: string
+          last_validated_at?: string | null
+          oembed_cached?: Json | null
+          platform?: Database["public"]["Enums"]["platform"]
+          sort_order?: number
+          submission_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_videos_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submission_reuse_view"
+            referencedColumns: ["submission_id"]
+          },
+          {
+            foreignKeyName: "submission_videos_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submissions: {
+        Row: {
+          application_id: string
+          cover_note: string | null
+          created_at: string
+          decided_at: string | null
+          decision_note: string | null
+          id: string
+          override_by_user_id: string | null
+          override_reason: string | null
+          status: Database["public"]["Enums"]["submission_status"]
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          cover_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          override_by_user_id?: string | null
+          override_reason?: string | null
+          status?: Database["public"]["Enums"]["submission_status"]
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          cover_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          override_by_user_id?: string | null
+          override_reason?: string | null
+          status?: Database["public"]["Enums"]["submission_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_override_by_user_id_fkey"
+            columns: ["override_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           created_at: string
@@ -422,7 +585,13 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      submission_reuse_view: {
+        Row: {
+          reuse_count: number | null
+          submission_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
