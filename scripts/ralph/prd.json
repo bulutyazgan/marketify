@@ -541,7 +541,7 @@
       ],
       "priority": 36,
       "passes": false,
-      "notes": "2026-04-17: code implemented + reviewed + quality-gated (tsc/lint). Drag verification blocked by pre-existing PGRST301 RLS rejection on PostgREST — the project JWT secret has drifted from MARKETIFY_JWT_SECRET so every authed query under the custom HS256 token fails with JWSInvalidClaims. Affects any logged-in screen, not just US-036. Re-run verification after the secret is re-aligned (dashboard Project Settings → JWT Settings) — the pull-to-refresh code itself is unchanged."
+      "notes": "2026-04-17: code implemented + reviewed + quality-gated (tsc/lint). Drag verification blocked by pre-existing PGRST301 RLS rejection on PostgREST — the project JWT secret has drifted from MARKETIFY_JWT_SECRET so every authed query under the custom HS256 token fails with JWSInvalidClaims. Re-confirmed blocker on 2026-04-17 via direct PostgREST probe with a real creator JWT (401 / PGRST301). Affects any logged-in screen, not just US-036. Re-run verification after the secret is re-aligned (dashboard Project Settings → JWT Settings) — the pull-to-refresh code itself is unchanged."
     },
     {
       "id": "US-037",
@@ -585,8 +585,8 @@
         "Commit"
       ],
       "priority": 39,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "2026-04-17: POST { listing_id } edge function deployed to Supabase. Response shape follows docs/tech-architecture.md \u00a75.4 over the story AC where they conflict: `conditions: ListingCondition[]` as a single array (client splits by `kind`) and `eligibility.failed_conditions: Array<{metric, platform, required, actual}>` instead of `reasons: string[]` (spec-authoritative; `platform` kept as additive disambiguator so min_followers isn't ambiguous across TikTok/IG). PRE-only eligibility per \u00a76.3, fail-closed on null metrics and unknown operators per \u00a73d. Draft + archived listings collapse to 404. Smoke test scripts/test/get-listing-detail.ts ships with 10 assertions; 1\u20133 pass locally, 4\u201310 need MARKETIFY_JWT_SECRET + SUPABASE_SERVICE_ROLE_KEY which aren't in local .env (same gap as every other edge-function smoke test). Quality gates tsc/lint pass; code-reviewer findings (single conditions array, archived\u2192404, unknown-op fail-closed, tighter smoke asserts) addressed in the final deploy (version 2)."
     },
     {
       "id": "US-040",
