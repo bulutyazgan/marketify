@@ -21,6 +21,11 @@ Started: (will be replaced on first run)
 - **Run `get_advisors({type:'security'})` after every RLS or schema change.** Address every error-level finding before commit.
 - **`expo lint` default glob is `['src', 'app', 'components']`.** Empty subdirs with only `.gitkeep` cause eslint to exit 2 ("all files ignored"). Keep at least one lintable `.ts`/`.tsx` file in any of those roots (`src/index.ts` with `export {};` was used for US-001).
 - **Expo bootstrap workaround:** `create-expo-app .` refuses to run when the target dir has dotfiles/dirs it considers hostile. Bootstrap into a sibling folder (e.g. `.expo-init`), then move the generated files up. Preserves `.claude/`, `.env`, `docs/`, `scripts/`.
+- **Reanimated 4.x babel plugin is `react-native-worklets/plugin`** (not the legacy `react-native-reanimated/plugin`). It lives in the `react-native-worklets` package — pin it explicitly via `bunx expo install react-native-worklets` so `bun install --production` won't drop it. Included by default in fresh Expo SDK 54 templates.
+- **Prefer `bunx expo install <pkg>`** over `bun add` for native modules — it pins the SDK-compatible version. Expo's install runs `bun add` under the hood when a `bun.lock` is present.
+- **App entry is `"main": "expo-router/entry"`** in package.json. The old `index.ts` + `App.tsx` from US-001 were removed. Root layout lives at `app/_layout.tsx`; initial route at `app/index.tsx`.
+- **Expo Go + SDK 54 + new-arch + `<Stack>` from expo-router throws at runtime**: `Exception in HostFunction: TypeError: expected dynamic type 'boolean', but had type 'string'`. For US-002 the root uses `<Slot />` as the minimal root. US-031 will revisit with a dev-client build (`expo run:ios`) where Stack + Tabs should work.
+- **iOS simulator boot flow for mobile-mcp verification:** `xcrun simctl boot <name>` → `open -a Simulator` → `bunx expo start --ios` in background → `xcrun simctl openurl <udid> exp://127.0.0.1:8081` if Expo Go doesn't auto-open the project. mobile-mcp's `mobile_open_url` blocks `exp://` schemes by default, so shell out.
 
 ---
 
@@ -35,4 +40,18 @@ Started: (will be replaced on first run)
   - `expo lint` scans `src|app|components` by default — keep at least one lintable file in any of those dirs or eslint errors "all files ignored"
   - `expo/tsconfig.base` does NOT set `strict`; our own tsconfig adds it
   - The initial `npx expo lint` auto-installs `eslint` + `eslint-config-expo` and auto-writes `eslint.config.js` — noted in package.json devDeps (intentional)
+---
+
+## 2026-04-17 07:45 — US-002
+- Installed 13 core runtime deps via `bunx expo install` (Supabase JS, AsyncStorage, url-polyfill, expo-router, Reanimated, gesture-handler, svg, lucide, haptics, linking, constants, font, mmkv); also added `react-native-worklets` explicitly since babel references `react-native-worklets/plugin`.
+- Configured `babel.config.js` with `react-native-worklets/plugin`; flipped `package.json#main` to `expo-router/entry`; added minimal `app/_layout.tsx` (GestureHandlerRootView + Slot) and `app/index.tsx`; deleted orphaned `App.tsx` + `index.ts`.
+- Files changed: `package.json`, `bun.lock`, `app.json` (auto-added expo-router/expo-font config plugins), `babel.config.js`, `app/_layout.tsx`, `app/index.tsx`, `App.tsx` (deleted), `index.ts` (deleted), `scripts/ralph/screenshots/us-002-boot.png`
+- Quality checks: tsc ✓ / lint ✓ / supabase advisors n/a / mobile-mcp ✓ (booted iPhone 17 Pro sim, Expo Go loaded bundle, "Marketify" renders on cream background — see `scripts/ralph/screenshots/us-002-boot.png`)
+- Code-reviewer verdict: issues fixed in this commit (added `react-native-worklets` explicit dep)
+- Spec gap: story title mentions NativeWind but the explicit install list does not include it; specs (design.md, product-plan.md, tech-architecture.md) don't mandate NativeWind either. Skipping for now — design tokens (US-022) + StyleSheet is a viable path. Human to confirm.
+- **Learnings for future iterations:**
+  - Expo Go cannot load screens that require the `<Stack>` navigator from expo-router 6 under new-arch — use `<Slot />` or a dev-client build
+  - `bunx expo install <pkg>` pins SDK-compatible versions; it just downgraded transitive worklets 0.8.1 → 0.5.1 to match SDK 54. Trust it.
+  - `bunx expo install expo-router` auto-appends `"plugins": ["expo-router", ...]` to `app.json`
+  - mobile-mcp's `mobile_open_url` refuses non-http(s) schemes; use `xcrun simctl openurl <udid> exp://...` to deep-link into Expo Go
 ---
