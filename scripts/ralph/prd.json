@@ -347,8 +347,8 @@
         "Commit"
       ],
       "priority": 23,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Spec gap: Clash Display + Satoshi are Fontshare-hosted and absent from Expo Google Fonts — substituted with Outfit (display/h1/h2) and Rubik (body/caption), the fallbacks explicitly named in docs/design.md §1.3. JetBrains Mono used verbatim. Story AC enumerated 6 keys (display/h1/h2/body/caption/mono); subhead role from §1.3 (Satoshi 600 @ 17px) intentionally not included — AC list is explicit and Rubik lacks weight 600 so adding it would force a second weight substitution."
     },
     {
       "id": "US-024",

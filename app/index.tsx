@@ -1,9 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { colors } from '@/design/tokens';
+import { textStyles } from '@/design/typography';
 
 export default function Index() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Marketify</Text>
+      <Text style={[textStyles.display, styles.title]}>Marketify</Text>
     </View>
   );
 }
@@ -13,10 +15,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF9F2',
+    backgroundColor: colors.canvas,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    color: colors.ink,
   },
 });
