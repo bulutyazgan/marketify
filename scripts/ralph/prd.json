@@ -420,8 +420,8 @@
         "Commit"
       ],
       "priority": 28,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "BottomSheet uses RN `Modal` (transparent + statusBarTranslucent) as the portal, with a NESTED `GestureHandlerRootView` inside the Modal — required for Android since Modal opens a new window that does not inherit the root handler from `app/_layout.tsx`. snapPoints are fractions of screen height; first entry is primary (largest), sheetHeight is set from it, additional entries create peek positions. Drag past `largestOffset + sheetHeight * 0.25` or fling > 600 px/s dismisses. Toast is a React context provider + single-slot banner (not a queue — new show() replaces the current). Progress bar reads its track width from a shared value written by `onLayout` (same pattern as SkeletonCard). Duration default 2500ms per §1.4 line 439. Both primitives go through `withReducedMotion<WithSpringConfig>(SPRING_SNAPPY, reduced)` with the explicit generic to satisfy TS."
     },
     {
       "id": "US-029",

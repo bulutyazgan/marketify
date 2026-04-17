@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { fontAssets } from '@/design/typography';
+import { ToastProvider } from '@/components/primitives/Toast';
 
 // Hold the splash screen until custom fonts register — text with an unregistered
 // fontFamily silently falls back to System on iOS and the swap is visible to the user.
@@ -27,7 +28,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Slot />
+      <ToastProvider>
+        <Slot />
+      </ToastProvider>
       <StatusBar style="auto" />
     </GestureHandlerRootView>
   );
