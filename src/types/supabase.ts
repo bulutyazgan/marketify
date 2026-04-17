@@ -812,6 +812,16 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      manage_social_link: {
+        Args: {
+          p_action: string
+          p_handle?: string
+          p_platform?: Database["public"]["Enums"]["platform"]
+          p_social_link_id?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       submission_reuse_count: {
         Args: { p_submission_id: string }
         Returns: number

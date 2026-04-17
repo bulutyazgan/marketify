@@ -91,28 +91,70 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   if [[ "$TOOL" == "amp" ]]; then
     OUTPUT=$(cat "$SCRIPT_DIR/prompt.md" | amp --dangerously-allow-all 2>&1 | tee /dev/stderr) || true
   else
-    # Claude Code: use --dangerously-skip-permissions for autonomous operation, --print for output.
-    # Watchdog: mobile-mcp stdio / iOS sim hangs have caused --print to wait indefinitely for MCP
-    # children to close even after the iteration's work has committed. Kill the worker (SIGTERM,
-    # then SIGKILL after 10s) if it exceeds MAX_ITER_SECONDS so the loop advances.
+    # Claude Code: stream-json output format emits NDJSON (one event per tool_use / message / result).
+    # We pipe it through jq to produce human-readable lines ([TOOL], [TXT], [RES], [DONE]) that land
+    # in $ITER_OUT and stream to ralph.log via tail -F. Watchdog kills the worker if mobile-mcp or
+    # other MCP children wedge the loop past MAX_ITER_SECONDS.
     MAX_ITER_SECONDS=${MAX_ITER_SECONDS:-2700}
     ITER_OUT=$(mktemp -t ralph-iter) || ITER_OUT="/tmp/ralph-iter-$$"
-    : > "$ITER_OUT"
-    # Live-stream the iteration output to stdout (ralph.log) so tool calls appear in real time.
-    # --verbose makes claude --print emit tool calls + thinking as they happen instead of buffering
-    # the final message.
+    RAW_OUT=$(mktemp -t ralph-raw)  || RAW_OUT="/tmp/ralph-raw-$$"
+    : > "$ITER_OUT" ; : > "$RAW_OUT"
+
+    JQ_FILTER='
+if .type == "system" and .subtype == "init" then
+  "[INIT] session=\(.session_id // "?") model=\(.model // "?") cwd=\(.cwd // "?")"
+elif .type == "assistant" then
+  (.message.content // [] | map(
+    if .type == "text" then
+      ("[TXT] " + (.text | gsub("\n"; " / ") | if (length // 0) > 500 then .[:500] + "..." else . end))
+    elif .type == "tool_use" then
+      ("[TOOL] " + .name + " " + ((.input // {}) | tojson | if length > 500 then .[:500] + "..." else . end))
+    elif .type == "thinking" then
+      ("[THINK] " + (.thinking // "" | gsub("\n"; " / ") | if (length // 0) > 300 then .[:300] + "..." else . end))
+    else empty end
+  ) | .[])
+elif .type == "user" then
+  (.message.content // [] | map(
+    if .type == "tool_result" then
+      (. as $tr
+       | ($tr.content | if type == "array" then map(.text // "") | join(" ") else tostring end) as $txt
+       | ("[RES] " + ($txt | gsub("\n"; " / ") | if (length // 0) > 300 then .[:300] + "..." else . end)))
+    else empty end
+  ) | .[])
+elif .type == "result" then
+  ("[DONE] subtype=" + (.subtype // "?") + " turns=" + ((.num_turns // 0) | tostring) + " duration=" + ((.duration_ms // 0) | tostring) + "ms")
+else empty end
+'
+
+    # Live-stream $ITER_OUT to stdout (ralph.log) so every formatted line appears in real time.
     tail -F "$ITER_OUT" 2>/dev/null &
     TAIL_PID=$!
-    claude --dangerously-skip-permissions --verbose --print < "$SCRIPT_DIR/CLAUDE.md" > "$ITER_OUT" 2>&1 &
+
+    # Reformat NDJSON from claude's stdout → human-readable lines in $ITER_OUT.
+    ( tail -F "$RAW_OUT" 2>/dev/null | jq --unbuffered -r "$JQ_FILTER" 2>/dev/null >> "$ITER_OUT" ) &
+    JQ_PIPE_PID=$!
+
+    # stdout → RAW_OUT (NDJSON), stderr → $ITER_OUT (errors show up directly in the log).
+    claude --dangerously-skip-permissions --output-format stream-json --verbose --print \
+      < "$SCRIPT_DIR/CLAUDE.md" > "$RAW_OUT" 2>> "$ITER_OUT" &
     CLAUDE_PID=$!
+
     ( sleep "$MAX_ITER_SECONDS"; kill -TERM "$CLAUDE_PID" 2>/dev/null; sleep 10; kill -KILL "$CLAUDE_PID" 2>/dev/null ) &
     WATCHDOG_PID=$!
+
     wait "$CLAUDE_PID" 2>/dev/null || true
-    sleep 1
-    kill "$TAIL_PID" 2>/dev/null || true; wait "$TAIL_PID" 2>/dev/null || true
+    sleep 2  # let jq drain any final NDJSON lines before we tear it down
+
+    # Clean up the jq pipeline and its children.
+    pkill -P "$JQ_PIPE_PID" 2>/dev/null || true
+    kill "$JQ_PIPE_PID" 2>/dev/null || true
+    wait "$JQ_PIPE_PID" 2>/dev/null || true
+
+    kill "$TAIL_PID"     2>/dev/null || true; wait "$TAIL_PID"     2>/dev/null || true
     kill "$WATCHDOG_PID" 2>/dev/null || true; wait "$WATCHDOG_PID" 2>/dev/null || true
+
     OUTPUT=$(cat "$ITER_OUT" 2>/dev/null || true)
-    rm -f "$ITER_OUT"
+    rm -f "$ITER_OUT" "$RAW_OUT"
   fi
   
   # Check for completion signal

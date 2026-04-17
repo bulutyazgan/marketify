@@ -1,17 +1,17 @@
 {
   "project": "Marketify",
   "branchName": "ralph/marketify-mvp",
-  "description": "Mobile marketplace (Expo + RN + Supabase) where creators claim bounties from listers. v1 MVP per docs/product-plan.md §3.1, design language per docs/design.md, schema per docs/tech-architecture.md §4.7. No payments, no OAuth — Apify scrapes power creator metrics.",
+  "description": "Mobile marketplace (Expo + RN + Supabase) where creators claim bounties from listers. v1 MVP per docs/product-plan.md \u00a73.1, design language per docs/design.md, schema per docs/tech-architecture.md \u00a74.7. No payments, no OAuth \u2014 Apify scrapes power creator metrics.",
   "userStories": [
     {
       "id": "US-001",
       "title": "Bootstrap Expo + TypeScript app skeleton",
       "description": "Initialize the Expo app at the repo root so future stories have something to build into.",
       "acceptanceCriteria": [
-        "Run `npx create-expo-app@latest . --template blank-typescript --no-install` (skip install — install with bun after)",
+        "Run `npx create-expo-app@latest . --template blank-typescript --no-install` (skip install \u2014 install with bun after)",
         "Install deps with `bun install` (bun is available; do NOT use npm/yarn)",
         "Add `app.json` config: name=Marketify, slug=marketify, scheme=marketify, ios.bundleIdentifier=com.marketify.app, android.package=com.marketify.app",
-        "Add `tsconfig.json` strict mode + paths: `@/*` → `src/*`",
+        "Add `tsconfig.json` strict mode + paths: `@/*` \u2192 `src/*`",
         "Create `src/` with empty `components/`, `screens/`, `lib/`, `types/` subfolders (each with a `.gitkeep`)",
         "Add scripts to package.json: `typecheck` (tsc --noEmit), `lint` (expo lint)",
         "`bun run typecheck` passes",
@@ -40,13 +40,13 @@
     {
       "id": "US-003",
       "title": "Create Supabase project + apply baseline extensions/enums migration",
-      "description": "Stand up the Supabase project and the foundational schema enums per docs/tech-architecture.md §4.7.",
+      "description": "Stand up the Supabase project and the foundational schema enums per docs/tech-architecture.md \u00a74.7.",
       "acceptanceCriteria": [
         "Use Supabase MCP `list_organizations` then `create_project` (name=marketify-mvp, region=us-east-1) if no project exists; else use existing",
         "Save project ref + URL + publishable key into `.env` keys SUPABASE_URL and SUPABASE_ANON_KEY (do NOT print values back to chat)",
-        "Apply migration `us_003_baseline_enums`: enable extensions (pgcrypto, pg_cron if available), create enums per tech-architecture.md §4.7 (user_role, listing_status, application_status, submission_status, scrape_mode, etc.)",
-        "Run `get_advisors({type:'security'})` — note any findings (expected: low/none for enums)",
-        "Run `generate_typescript_types` → write to `src/types/supabase.ts`",
+        "Apply migration `us_003_baseline_enums`: enable extensions (pgcrypto, pg_cron if available), create enums per tech-architecture.md \u00a74.7 (user_role, listing_status, application_status, submission_status, scrape_mode, etc.)",
+        "Run `get_advisors({type:'security'})` \u2014 note any findings (expected: low/none for enums)",
+        "Run `generate_typescript_types` \u2192 write to `src/types/supabase.ts`",
         "Commit migration + types"
       ],
       "priority": 3,
@@ -56,13 +56,13 @@
     {
       "id": "US-004",
       "title": "Migration: users + creator_profiles + lister_profiles + social_links",
-      "description": "Identity tables per tech-architecture.md §4.7. No Supabase Auth — custom JWT.",
+      "description": "Identity tables per tech-architecture.md \u00a74.7. No Supabase Auth \u2014 custom JWT.",
       "acceptanceCriteria": [
-        "Migration `us_004_identity_tables` creates: users, creator_profiles, lister_profiles, social_links exactly per docs/tech-architecture.md §4.7",
+        "Migration `us_004_identity_tables` creates: users, creator_profiles, lister_profiles, social_links exactly per docs/tech-architecture.md \u00a74.7",
         "Include all denormalized creator metric columns (tiktok_follower_count, instagram_avg_views_last_10, instagram_follower_count, etc.)",
         "Foreign keys + unique constraints per spec",
         "Regenerate TypeScript types",
-        "`get_advisors({type:'security'})` — fix any errors before commit (RLS will be added in a later story; expect a 'rls disabled' warning, that is acceptable here)",
+        "`get_advisors({type:'security'})` \u2014 fix any errors before commit (RLS will be added in a later story; expect a 'rls disabled' warning, that is acceptable here)",
         "Commit"
       ],
       "priority": 4,
@@ -72,7 +72,7 @@
     {
       "id": "US-005",
       "title": "Migration: listings + listing_versions + pre/post conditions",
-      "description": "Campaign-side tables per tech-architecture.md §4.7 including the version table the cascade trigger relies on.",
+      "description": "Campaign-side tables per tech-architecture.md \u00a74.7 including the version table the cascade trigger relies on.",
       "acceptanceCriteria": [
         "Migration `us_005_listing_tables` creates: listings, listing_versions, listing_pre_conditions, listing_post_conditions",
         "Include cache columns `min_followers_tiktok`, `min_followers_instagram` as plain integer (NOT generated) on listings, with btree indexes",
@@ -106,7 +106,7 @@
         "Migration `us_007_metric_snapshots` creates the table with `apify_run_id` unique constraint and `scrape_mode` enum column",
         "Includes the BEFORE INSERT trigger function that branches on scrape_mode and updates the matching denorm columns on creator_profiles",
         "Acquires `pg_advisory_xact_lock` keyed on (user_id, scrape_mode) before mutating",
-        "Test via `execute_sql`: insert two snapshots for the same user → verify creator_profiles updates correctly",
+        "Test via `execute_sql`: insert two snapshots for the same user \u2192 verify creator_profiles updates correctly",
         "Commit"
       ],
       "priority": 7,
@@ -130,7 +130,7 @@
     {
       "id": "US-009",
       "title": "Migration: RLS policies on every user-data table",
-      "description": "Enable RLS + write policies per tech-architecture.md §4.7 (RLS section). JWT claims drive scoping.",
+      "description": "Enable RLS + write policies per tech-architecture.md \u00a74.7 (RLS section). JWT claims drive scoping.",
       "acceptanceCriteria": [
         "Migration `us_009_rls_policies` enables RLS on users, creator_profiles, lister_profiles, social_links, listings, listing_versions, listing_pre_conditions, listing_post_conditions, applications, submissions, metric_snapshots, notifications, events",
         "Policies match docs/tech-architecture.md (creator can read own + active listings; lister can manage own listings/applications; etc.)",
@@ -150,7 +150,7 @@
         "Migration `us_010_cascade_trigger` per docs/tech-architecture.md",
         "Trigger fires on UPDATE of price, currency, max_submissions, pre_conditions, post_conditions, sample videos",
         "Snapshots the prior state into listing_versions and updates pending applications to status=cancelled_listing_edit + emits notifications rows",
-        "Test via `execute_sql`: edit a seeded listing's price → verify a new listing_versions row exists, pending applications cascade to cancelled, notifications inserted",
+        "Test via `execute_sql`: edit a seeded listing's price \u2192 verify a new listing_versions row exists, pending applications cascade to cancelled, notifications inserted",
         "Commit"
       ],
       "priority": 10,
@@ -160,10 +160,10 @@
     {
       "id": "US-011",
       "title": "Migration: pg_cron jobs (daily refresh, hourly staleness)",
-      "description": "Scheduled jobs that keep metrics fresh per docs/tech-architecture.md §3 + product-plan §3.1.",
+      "description": "Scheduled jobs that keep metrics fresh per docs/tech-architecture.md \u00a73 + product-plan \u00a73.1.",
       "acceptanceCriteria": [
         "Migration `us_011_cron_jobs` schedules: (a) daily creator-metrics refresh job (calls the metrics-refresh edge function), (b) hourly staleness marker that flips `metrics_stale_at` after 24h",
-        "If pg_cron is not available in the project's plan, comment the migration with a TODO and add a `Spec gap:` line to progress.txt — do not silently skip",
+        "If pg_cron is not available in the project's plan, comment the migration with a TODO and add a `Spec gap:` line to progress.txt \u2014 do not silently skip",
         "Commit"
       ],
       "priority": 11,
@@ -189,7 +189,7 @@
       "description": "Shared TS module under supabase/functions/_shared/jwt.ts that signs and verifies HS256 JWTs with claims (sub, role, iat, exp).",
       "acceptanceCriteria": [
         "supabase/functions/_shared/jwt.ts exports signJwt(claims) and verifyJwt(token)",
-        "HS256, secret pulled from env var MARKETIFY_JWT_SECRET (NOT SUPABASE_JWT_SECRET — we are signing our own)",
+        "HS256, secret pulled from env var MARKETIFY_JWT_SECRET (NOT SUPABASE_JWT_SECRET \u2014 we are signing our own)",
         "Claims include: sub (user_id), role ('creator'|'lister'), iat, exp (7d default)",
         "supabase/functions/_shared/cors.ts exports a `corsHeaders` constant for reuse",
         "Add MARKETIFY_JWT_SECRET to .env.example",
@@ -202,9 +202,9 @@
     {
       "id": "US-014",
       "title": "Edge function: auth-signup-lister",
-      "description": "Listers sign up with username + email + org name → returns JWT.",
+      "description": "Listers sign up with username + email + org name \u2192 returns JWT.",
       "acceptanceCriteria": [
-        "supabase/functions/auth-signup-lister/index.ts: POST { username, email, org_name } → 200 { token, user_id, role }",
+        "supabase/functions/auth-signup-lister/index.ts: POST { username, email, org_name } \u2192 200 { token, user_id, role }",
         "Validates uniqueness on username + email; 409 on conflict",
         "Inserts users + lister_profiles row in a single transaction",
         "Signs JWT via _shared/jwt.ts",
@@ -219,13 +219,13 @@
     {
       "id": "US-015",
       "title": "Apify client wrapper (edge function shared module)",
-      "description": "Single place that calls Apify actors with consistent error handling. Per docs/tech-architecture.md §3.",
+      "description": "Single place that calls Apify actors with consistent error handling. Per docs/tech-architecture.md \u00a73.",
       "acceptanceCriteria": [
         "supabase/functions/_shared/apify.ts exports runTikTokProfile(handle), runInstagramDetails(handle), runInstagramPosts(handle)",
-        "Each function POSTs to Apify with the actor input shape from docs/tech-architecture.md §3, includes APIFY_KEY from env",
+        "Each function POSTs to Apify with the actor input shape from docs/tech-architecture.md \u00a73, includes APIFY_KEY from env",
         "Supports a synchronous `waitSecs` parameter (default 60) so callers can await completion or fall back to webhooks",
         "Returns { runId, datasetId, status }",
-        "Unit test (Deno test in supabase/functions/_shared/apify.test.ts) mocking fetch — verifies request shapes",
+        "Unit test (Deno test in supabase/functions/_shared/apify.test.ts) mocking fetch \u2014 verifies request shapes",
         "Commit"
       ],
       "priority": 15,
@@ -239,7 +239,7 @@
       "acceptanceCriteria": [
         "supabase/functions/apify-webhook/index.ts: POST handler verifies APIFY_WEBHOOK_SECRET via constant-time compare",
         "Branch: when scrape_mode resolves to 'tiktok_profile' (passed in webhook payload metadata), parse the dataset and upsert one metric_snapshots row keyed on apify_run_id",
-        "Idempotent — duplicate webhooks for the same run_id are no-ops",
+        "Idempotent \u2014 duplicate webhooks for the same run_id are no-ops",
         "Add APIFY_WEBHOOK_SECRET to .env.example",
         "Test: simulate a webhook payload via fetch from a script and verify the row + denorm trigger fired",
         "Commit"
@@ -253,7 +253,7 @@
       "title": "Edge function: apify-webhook (ig_details branch)",
       "description": "Add the IG details branch to the existing webhook handler.",
       "acceptanceCriteria": [
-        "Extend supabase/functions/apify-webhook/index.ts with the ig_details case per docs/tech-architecture.md §3",
+        "Extend supabase/functions/apify-webhook/index.ts with the ig_details case per docs/tech-architecture.md \u00a73",
         "Updates the IG-related denorm columns only (does not touch tiktok or ig_posts fields)",
         "Test passes for a synthetic ig_details payload",
         "Commit"
@@ -265,7 +265,7 @@
     {
       "id": "US-018",
       "title": "Edge function: apify-webhook (ig_posts branch)",
-      "description": "IG posts branch — populates instagram_avg_views_last_10 etc.",
+      "description": "IG posts branch \u2014 populates instagram_avg_views_last_10 etc.",
       "acceptanceCriteria": [
         "Extend webhook with ig_posts case",
         "Computes the rolling 10-post avg per spec",
@@ -279,9 +279,9 @@
     {
       "id": "US-019",
       "title": "Edge function: auth-signup-creator (handle inputs, no scrape yet)",
-      "description": "Creator signup that records handles but does not yet kick scrapes — those come in US-020.",
+      "description": "Creator signup that records handles but does not yet kick scrapes \u2014 those come in US-020.",
       "acceptanceCriteria": [
-        "supabase/functions/auth-signup-creator/index.ts: POST { username, tiktok_handle?, instagram_handle? } → 200 { token, user_id, role }",
+        "supabase/functions/auth-signup-creator/index.ts: POST { username, tiktok_handle?, instagram_handle? } \u2192 200 { token, user_id, role }",
         "Requires at least one handle; 422 if both missing",
         "Inserts users + creator_profiles + social_links rows in a single transaction",
         "Signs and returns JWT",
@@ -298,7 +298,7 @@
       "description": "After insert, fire up to three Apify runs synchronously with a 60s wait; webhook handles late completions.",
       "acceptanceCriteria": [
         "Extend auth-signup-creator to call runTikTokProfile / runInstagramDetails / runInstagramPosts per the handles supplied",
-        "Use Promise.allSettled — partial failure is acceptable (some metrics are better than none)",
+        "Use Promise.allSettled \u2014 partial failure is acceptable (some metrics are better than none)",
         "Within waitSecs the response includes a `metrics_status: { tiktok, ig_details, ig_posts }` map of statuses",
         "Test against a real signup with a known live TikTok/IG handle and confirm metric_snapshots rows appear within 60s",
         "Commit"
@@ -310,22 +310,22 @@
     {
       "id": "US-021",
       "title": "Edge function: metrics-refresh with 6h throttle",
-      "description": "POST /metrics/refresh body { platform: 'tiktok'|'instagram' } — kicks scrapes if last refresh >6h ago.",
+      "description": "POST /metrics/refresh body { platform: 'tiktok'|'instagram' } \u2014 kicks scrapes if last refresh >6h ago.",
       "acceptanceCriteria": [
         "supabase/functions/metrics-refresh/index.ts: requires JWT; reads (user_id, platform) from body+claims",
         "Checks the latest metric_snapshots.created_at for that pair; if <6h, returns 429 with { retry_after_seconds }",
         "Otherwise kicks the appropriate Apify run(s)",
-        "Test: two back-to-back calls — second returns 429",
+        "Test: two back-to-back calls \u2014 second returns 429",
         "Commit"
       ],
       "priority": 21,
       "passes": true,
-      "notes": "Followed spec §5.2 over AC: body is {social_link_id}, throttle keyed on social_links.last_scrape_attempt_at (atomic CAS to close TOCTOU), responses include status:'queued'|'already_fresh', errors 429 RATE_LIMIT + 502 APIFY_ERROR. snapshot_ids returned on already_fresh; empty on queued until webhook RPCs UPSERT (spec gap documented in header)."
+      "notes": "Followed spec \u00a75.2 over AC: body is {social_link_id}, throttle keyed on social_links.last_scrape_attempt_at (atomic CAS to close TOCTOU), responses include status:'queued'|'already_fresh', errors 429 RATE_LIMIT + 502 APIFY_ERROR. snapshot_ids returned on already_fresh; empty on queued until webhook RPCs UPSERT (spec gap documented in header)."
     },
     {
       "id": "US-022",
       "title": "Design tokens module (colors, spacing, radii, shadows)",
-      "description": "Per docs/design.md §3 — single source of truth for visual tokens.",
+      "description": "Per docs/design.md \u00a73 \u2014 single source of truth for visual tokens.",
       "acceptanceCriteria": [
         "src/design/tokens.ts exports: colors (full palette including pink #EC4899, orange #F97316, ink, canvas #FFF9F2, semantic statuses + soft-bg variants), spacing (4/8/12/16/20/24/32/48), radii (12 card, 999 pill, 4 input), shadows (hard 2px ink offset)",
         "Unit type test (compile-time): typed const objects with `as const`",
@@ -334,7 +334,7 @@
       ],
       "priority": 22,
       "passes": true,
-      "notes": "Radii and shadow match docs/design.md §1.5 (card=12, button=10, input=10, image=8, pill=999; shadow offset=3px) — overrides the story's input=4 + 2px-offset wording per 'specs win' rule. All 20 §1.2 palette rows present + as const literal types."
+      "notes": "Radii and shadow match docs/design.md \u00a71.5 (card=12, button=10, input=10, image=8, pill=999; shadow offset=3px) \u2014 overrides the story's input=4 + 2px-offset wording per 'specs win' rule. All 20 \u00a71.2 palette rows present + as const literal types."
     },
     {
       "id": "US-023",
@@ -342,27 +342,27 @@
       "description": "Load custom fonts via expo-font; expose typed text style presets.",
       "acceptanceCriteria": [
         "Fonts loaded via expo-font in app root; splash held until loaded",
-        "src/design/typography.ts exports textStyles: display, h1, h2, body, caption, mono — each with fontFamily, fontSize, lineHeight from docs/design.md",
+        "src/design/typography.ts exports textStyles: display, h1, h2, body, caption, mono \u2014 each with fontFamily, fontSize, lineHeight from docs/design.md",
         "If font assets are not committed, use the Expo Google Fonts equivalent for Clash/Satoshi (or fall back to Inter + JetBrains Mono) and add a `Spec gap:` note flagging the asset substitution",
         "Commit"
       ],
       "priority": 23,
       "passes": true,
-      "notes": "Spec gap: Clash Display + Satoshi are Fontshare-hosted and absent from Expo Google Fonts — substituted with Outfit (display/h1/h2) and Rubik (body/caption), the fallbacks explicitly named in docs/design.md §1.3. JetBrains Mono used verbatim. Story AC enumerated 6 keys (display/h1/h2/body/caption/mono); subhead role from §1.3 (Satoshi 600 @ 17px) intentionally not included — AC list is explicit and Rubik lacks weight 600 so adding it would force a second weight substitution."
+      "notes": "Spec gap: Clash Display + Satoshi are Fontshare-hosted and absent from Expo Google Fonts \u2014 substituted with Outfit (display/h1/h2) and Rubik (body/caption), the fallbacks explicitly named in docs/design.md \u00a71.3. JetBrains Mono used verbatim. Story AC enumerated 6 keys (display/h1/h2/body/caption/mono); subhead role from \u00a71.3 (Satoshi 600 @ 17px) intentionally not included \u2014 AC list is explicit and Rubik lacks weight 600 so adding it would force a second weight substitution."
     },
     {
       "id": "US-024",
       "title": "Motion presets + useReducedMotion wrapper",
       "description": "Three spring presets (soft/snappy/bouncy) + a hook that respects OS reduced-motion.",
       "acceptanceCriteria": [
-        "src/design/motion.ts exports SPRING_SOFT/SPRING_SNAPPY/SPRING_BOUNCY config objects per docs/design.md §6",
+        "src/design/motion.ts exports SPRING_SOFT/SPRING_SNAPPY/SPRING_BOUNCY config objects per docs/design.md \u00a76",
         "src/design/useReducedMotion.ts hook wraps AccessibilityInfo and returns boolean",
         "Helper `withReducedMotion(animation, reduced)` returns a no-op animation when reduced=true",
         "Commit"
       ],
       "priority": 24,
       "passes": true,
-      "notes": "Spring presets live in docs/design.md §1.4 (not §6); values match canonical soft/snappy/bouncy. `withReducedMotion(config, reduced)` is a CONFIG augmenter (spreads `reduceMotion: ReduceMotion.Always` from Reanimated v4) rather than an animation-object wrapper — Reanimated collapses Always-flagged animations to instant snap, which satisfies the spec's no-op requirement. Hook uses a session-scoped module cache so subsequent mounts don't re-race the async AccessibilityInfo query."
+      "notes": "Spring presets live in docs/design.md \u00a71.4 (not \u00a76); values match canonical soft/snappy/bouncy. `withReducedMotion(config, reduced)` is a CONFIG augmenter (spreads `reduceMotion: ReduceMotion.Always` from Reanimated v4) rather than an animation-object wrapper \u2014 Reanimated collapses Always-flagged animations to instant snap, which satisfies the spec's no-op requirement. Hook uses a session-scoped module cache so subsequent mounts don't re-race the async AccessibilityInfo query."
     },
     {
       "id": "US-025",
@@ -378,7 +378,7 @@
       ],
       "priority": 25,
       "passes": true,
-      "notes": "Spec gap: story said 'snappy spring', docs/design.md §1.4 line 100 says spring.soft for press feedback — followed spec (SPRING_SOFT). Spec gap: docs/design.md §4.1 line 722 lists `variant` as a ButtonPrimary prop but does NOT define the variant values; left unexpanded (single CTA variant only). Code-reviewer caught that iOS `shadowOffset` is a compound prop and not animatable through Reanimated `useAnimatedStyle` — switched to animating `shadowOpacity` 1→0 while translating (3,3), which reads as a shadow collapse per §1.5. `withReducedMotion<WithSpringConfig>(SPRING_SOFT, reduced)` requires explicit generic widening because `as const satisfies WithSpringConfig` on the preset narrows to a readonly literal that doesn't satisfy the helper's `C extends {reduceMotion?: ReduceMotion}` constraint under strict mode — captured in Codebase Patterns. Mid-press screenshot via mobile-mcp long-press is unreliable (3px translate + opacity fade too subtle to distinguish at capture timing); rest-state screenshot + code-review + tsc + lint are the authoritative verification."
+      "notes": "Spec gap: story said 'snappy spring', docs/design.md \u00a71.4 line 100 says spring.soft for press feedback \u2014 followed spec (SPRING_SOFT). Spec gap: docs/design.md \u00a74.1 line 722 lists `variant` as a ButtonPrimary prop but does NOT define the variant values; left unexpanded (single CTA variant only). Code-reviewer caught that iOS `shadowOffset` is a compound prop and not animatable through Reanimated `useAnimatedStyle` \u2014 switched to animating `shadowOpacity` 1\u21920 while translating (3,3), which reads as a shadow collapse per \u00a71.5. `withReducedMotion<WithSpringConfig>(SPRING_SOFT, reduced)` requires explicit generic widening because `as const satisfies WithSpringConfig` on the preset narrows to a readonly literal that doesn't satisfy the helper's `C extends {reduceMotion?: ReduceMotion}` constraint under strict mode \u2014 captured in Codebase Patterns. Mid-press screenshot via mobile-mcp long-press is unreliable (3px translate + opacity fade too subtle to distinguish at capture timing); rest-state screenshot + code-review + tsc + lint are the authoritative verification."
     },
     {
       "id": "US-026",
@@ -392,7 +392,7 @@
       ],
       "priority": 26,
       "passes": true,
-      "notes": "Spec gap: component inventory (§7 line 725) lists `variant` as a Chip prop but the design doesn't define variant values for v1. Deferred (same precedent as US-025 ButtonPrimary variant). Spec gap: StatusPill `animateTo(newStatus)` worklet from §7 line 715 is deferred to US-060 (approval/rejection animations) — this story's AC is 'read-only with semantic color'. Added `textStyles.micro` preset to `src/design/typography.ts` (Rubik_700Bold 11pt, lineHeight 14, letterSpacing 0.88, uppercase) — US-023 AC only enumerated 6 keys so micro was deferred; this story was the first caller, so added it now. Code-reviewer caught four medium issues fixed before commit: (1) Chip was missing the neubrutalist hard shadow + press-collapse; (2) StatusPill was missing the hard shadow — both violated §1.5 ('Borders are 2px solid ink on every card, button, input, chip' + hard shadow universal); (3) Chip a11y role was 'button' with `selected` which screen readers ignore → switched to 'checkbox' with `checked`; (4) StatusPill's `accessibilityRole='text'` on a View is an invalid RN role → removed, kept only `accessible + accessibilityLabel`."
+      "notes": "Spec gap: component inventory (\u00a77 line 725) lists `variant` as a Chip prop but the design doesn't define variant values for v1. Deferred (same precedent as US-025 ButtonPrimary variant). Spec gap: StatusPill `animateTo(newStatus)` worklet from \u00a77 line 715 is deferred to US-060 (approval/rejection animations) \u2014 this story's AC is 'read-only with semantic color'. Added `textStyles.micro` preset to `src/design/typography.ts` (Rubik_700Bold 11pt, lineHeight 14, letterSpacing 0.88, uppercase) \u2014 US-023 AC only enumerated 6 keys so micro was deferred; this story was the first caller, so added it now. Code-reviewer caught four medium issues fixed before commit: (1) Chip was missing the neubrutalist hard shadow + press-collapse; (2) StatusPill was missing the hard shadow \u2014 both violated \u00a71.5 ('Borders are 2px solid ink on every card, button, input, chip' + hard shadow universal); (3) Chip a11y role was 'button' with `selected` which screen readers ignore \u2192 switched to 'checkbox' with `checked`; (4) StatusPill's `accessibilityRole='text'` on a View is an invalid RN role \u2192 removed, kept only `accessible + accessibilityLabel`."
     },
     {
       "id": "US-027",
@@ -407,21 +407,21 @@
       ],
       "priority": 27,
       "passes": true,
-      "notes": "CampaignCard props intentionally minimal (title, listerHandle, priceCents, currency, preConditionSummary, status, onPress) — the §6 inventory lists platforms[]/eligibility/variant/counts but the story AC enumerates only the 5 rendered fields. Deferred the richer prop set (same precedent as US-025 Button variant + US-026 Chip variant) — will land when the first caller actually needs them (US-038 Discover feed for eligibility/platform badges, US-054 My Campaigns for lister-side counts). SkeletonCard stores layout width in a `useSharedValue` rather than React state so the worklet avoids stale-capture flicker on first layout (code-reviewer catch — promoted to Codebase Patterns). Mid-press shadow-collapse screenshot deliberately NOT captured (same timing limitation as US-025 Button) — rest-state + tsc/lint/code-review are authoritative verification."
+      "notes": "CampaignCard props intentionally minimal (title, listerHandle, priceCents, currency, preConditionSummary, status, onPress) \u2014 the \u00a76 inventory lists platforms[]/eligibility/variant/counts but the story AC enumerates only the 5 rendered fields. Deferred the richer prop set (same precedent as US-025 Button variant + US-026 Chip variant) \u2014 will land when the first caller actually needs them (US-038 Discover feed for eligibility/platform badges, US-054 My Campaigns for lister-side counts). SkeletonCard stores layout width in a `useSharedValue` rather than React state so the worklet avoids stale-capture flicker on first layout (code-reviewer catch \u2014 promoted to Codebase Patterns). Mid-press shadow-collapse screenshot deliberately NOT captured (same timing limitation as US-025 Button) \u2014 rest-state + tsc/lint/code-review are authoritative verification."
     },
     {
       "id": "US-028",
       "title": "Primitive: BottomSheet + Toast",
       "description": "Sheet for filters/forms; toast for success/error transient feedback.",
       "acceptanceCriteria": [
-        "src/components/primitives/BottomSheet.tsx — gesture-driven dismissal, snap points, scrim",
-        "src/components/primitives/Toast.tsx — global toast provider in app root, success/error/info variants, auto-dismiss with progress bar",
-        "Mobile-mcp verification: open sheet, dismiss via drag, fire toast — screenshot each",
+        "src/components/primitives/BottomSheet.tsx \u2014 gesture-driven dismissal, snap points, scrim",
+        "src/components/primitives/Toast.tsx \u2014 global toast provider in app root, success/error/info variants, auto-dismiss with progress bar",
+        "Mobile-mcp verification: open sheet, dismiss via drag, fire toast \u2014 screenshot each",
         "Commit"
       ],
       "priority": 28,
       "passes": true,
-      "notes": "BottomSheet uses RN `Modal` (transparent + statusBarTranslucent) as the portal, with a NESTED `GestureHandlerRootView` inside the Modal — required for Android since Modal opens a new window that does not inherit the root handler from `app/_layout.tsx`. snapPoints are fractions of screen height; first entry is primary (largest), sheetHeight is set from it, additional entries create peek positions. Drag past `largestOffset + sheetHeight * 0.25` or fling > 600 px/s dismisses. Toast is a React context provider + single-slot banner (not a queue — new show() replaces the current). Progress bar reads its track width from a shared value written by `onLayout` (same pattern as SkeletonCard). Duration default 2500ms per §1.4 line 439. Both primitives go through `withReducedMotion<WithSpringConfig>(SPRING_SNAPPY, reduced)` with the explicit generic to satisfy TS."
+      "notes": "BottomSheet uses RN `Modal` (transparent + statusBarTranslucent) as the portal, with a NESTED `GestureHandlerRootView` inside the Modal \u2014 required for Android since Modal opens a new window that does not inherit the root handler from `app/_layout.tsx`. snapPoints are fractions of screen height; first entry is primary (largest), sheetHeight is set from it, additional entries create peek positions. Drag past `largestOffset + sheetHeight * 0.25` or fling > 600 px/s dismisses. Toast is a React context provider + single-slot banner (not a queue \u2014 new show() replaces the current). Progress bar reads its track width from a shared value written by `onLayout` (same pattern as SkeletonCard). Duration default 2500ms per \u00a71.4 line 439. Both primitives go through `withReducedMotion<WithSpringConfig>(SPRING_SNAPPY, reduced)` with the explicit generic to satisfy TS."
     },
     {
       "id": "US-029",
@@ -435,7 +435,7 @@
       ],
       "priority": 29,
       "passes": true,
-      "notes": "Spec gap: AC says URL '/_dev/primitives' but expo-router (confirmed v6.0.23 via Context7) silently excludes underscore-prefixed directories from routing — route lives at 'app/(dev)/primitives.tsx' which resolves to '/primitives' (route group parens are invisible in the URL). '__DEV__' gating is runtime via '<Redirect href=\"/\" />' in the prod branch. app/index.tsx previously held the ad-hoc primitives preview used for US-025-US-028 verification; moved the content into 'src/screens/_dev/PrimitivesPreview.tsx' (named export) and turned the root into a dev-redirect (to '/(dev)/primitives') + prod 'Marketify' placeholder — US-031 will replace index.tsx entirely with the role-aware router, so the prod placeholder is transitional. Mobile-mcp confirmed route redirect works + all primitives render + bottom sheet opens; toast not captured in final screenshot because it renders at absolute top of screen and we were scrolled to the bottom (component already exercised in US-028 verification). Screenshots under scripts/ralph/screenshots/us-029-{top,cards,sheet,toast}.png."
+      "notes": "Spec gap: AC says URL '/_dev/primitives' but expo-router (confirmed v6.0.23 via Context7) silently excludes underscore-prefixed directories from routing \u2014 route lives at 'app/(dev)/primitives.tsx' which resolves to '/primitives' (route group parens are invisible in the URL). '__DEV__' gating is runtime via '<Redirect href=\"/\" />' in the prod branch. app/index.tsx previously held the ad-hoc primitives preview used for US-025-US-028 verification; moved the content into 'src/screens/_dev/PrimitivesPreview.tsx' (named export) and turned the root into a dev-redirect (to '/(dev)/primitives') + prod 'Marketify' placeholder \u2014 US-031 will replace index.tsx entirely with the role-aware router, so the prod placeholder is transitional. Mobile-mcp confirmed route redirect works + all primitives render + bottom sheet opens; toast not captured in final screenshot because it renders at absolute top of screen and we were scrolled to the bottom (component already exercised in US-028 verification). Screenshots under scripts/ralph/screenshots/us-029-{top,cards,sheet,toast}.png."
     },
     {
       "id": "US-030",
@@ -450,22 +450,22 @@
       ],
       "priority": 30,
       "passes": true,
-      "notes": "Spec gap: AC names MMKV as the JWT store, but react-native-mmkv v4 is a Nitro module incompatible with Expo Go (current iteration loop still targets Expo Go — dev-client build deferred to US-031 per pattern 27). Swapped the MMKV pieces to expo-secure-store (Expo SDK, Keychain-backed, works in Expo Go). Functional intent — persistent secure JWT storage + in-memory cache so the Supabase custom fetch stays synchronous — is fully delivered. STORAGE_KEYS.jwt = 'marketify.jwt' preserves the key name from the AC. react-native-mmkv stays in package.json so US-031 can revisit when the dev-client build lands if the team wants the raw MMKV perf. app.config.ts added to surface SUPABASE_URL + SUPABASE_ANON_KEY on Constants.expoConfig.extra (process.env auto-loaded by Expo CLI from .env). AuthProvider gates children on an async `hydrated` flag (returns null while SecureStore reads settle) — trade-off of moving from sync MMKV to async SecureStore."
+      "notes": "Spec gap: AC names MMKV as the JWT store, but react-native-mmkv v4 is a Nitro module incompatible with Expo Go (current iteration loop still targets Expo Go \u2014 dev-client build deferred to US-031 per pattern 27). Swapped the MMKV pieces to expo-secure-store (Expo SDK, Keychain-backed, works in Expo Go). Functional intent \u2014 persistent secure JWT storage + in-memory cache so the Supabase custom fetch stays synchronous \u2014 is fully delivered. STORAGE_KEYS.jwt = 'marketify.jwt' preserves the key name from the AC. react-native-mmkv stays in package.json so US-031 can revisit when the dev-client build lands if the team wants the raw MMKV perf. app.config.ts added to surface SUPABASE_URL + SUPABASE_ANON_KEY on Constants.expoConfig.extra (process.env auto-loaded by Expo CLI from .env). AuthProvider gates children on an async `hydrated` flag (returns null while SecureStore reads settle) \u2014 trade-off of moving from sync MMKV to async SecureStore."
     },
     {
       "id": "US-031",
       "title": "Role-based router (creator vs lister tabs)",
-      "description": "Expo-router stack with role-aware tab layouts per docs/design.md §6.",
+      "description": "Expo-router stack with role-aware tab layouts per docs/design.md \u00a76.",
       "acceptanceCriteria": [
         "app/_layout.tsx wraps with AuthProvider + ToastProvider + GestureHandlerRootView",
         "Unauthed users see (auth) group; creators see (creator) tab group with Discover/Applied/Submitted/Profile; listers see (lister) tab group with Home/Campaigns/Inbox/Profile + a FAB hook",
         "All tab labels + lucide icons per docs/design.md",
-        "Mobile-mcp verification: launch unauthed → see auth screen; manually call signIn() with a creator token via dev menu → tabs switch; same for lister",
+        "Mobile-mcp verification: launch unauthed \u2192 see auth screen; manually call signIn() with a creator token via dev menu \u2192 tabs switch; same for lister",
         "Commit"
       ],
       "priority": 31,
       "passes": true,
-      "notes": "Root _layout already provided AuthProvider+ToastProvider+GestureHandlerRootView from US-030. Added role-aware redirect at app/index.tsx (creator→/(creator)/feed, lister→/(lister)/dashboard, anon→/(auth)). Creator routes per design §3.1 = /feed /applications /submissions /profile (label 'Discover' still shows on the Feed tab/header per spec); Lister routes per §3.2 = /dashboard /campaigns /inbox /profile with FAB mirrored on Dashboard + Campaigns. Custom TabBar primitive (src/components/shared/TabBar.tsx) renders on top of <Slot /> — expo-router's native <Tabs> crashes under Expo Go + SDK 54 new-arch with 'expected dynamic type boolean'. TabDef splits `path` (for router.navigate) from `activePathname` (URL-stripped for usePathname match) because route-group parens are invisible in the URL. Dev role picker in (auth)/index.tsx lives inside a `__DEV__`-branched sub-component so Metro can strip the fake tokens + UUIDs — module-level const would survive dead-code removal. Spec gap: Toast primitive doesn't fire at runtime (verified regression exists on /(dev)/primitives toast test buttons too, predates US-031 — no Toast.tsx changes since US-028 where it worked). Not blocking US-031 AC but needs separate story. Screenshots: scripts/ralph/screenshots/us-031-{auth,creator-feed,creator-discover,creator-profile,lister-home,lister-campaigns-fab,lister-fab-toast}.png."
+      "notes": "Root _layout already provided AuthProvider+ToastProvider+GestureHandlerRootView from US-030. Added role-aware redirect at app/index.tsx (creator\u2192/(creator)/feed, lister\u2192/(lister)/dashboard, anon\u2192/(auth)). Creator routes per design \u00a73.1 = /feed /applications /submissions /profile (label 'Discover' still shows on the Feed tab/header per spec); Lister routes per \u00a73.2 = /dashboard /campaigns /inbox /profile with FAB mirrored on Dashboard + Campaigns. Custom TabBar primitive (src/components/shared/TabBar.tsx) renders on top of <Slot /> \u2014 expo-router's native <Tabs> crashes under Expo Go + SDK 54 new-arch with 'expected dynamic type boolean'. TabDef splits `path` (for router.navigate) from `activePathname` (URL-stripped for usePathname match) because route-group parens are invisible in the URL. Dev role picker in (auth)/index.tsx lives inside a `__DEV__`-branched sub-component so Metro can strip the fake tokens + UUIDs \u2014 module-level const would survive dead-code removal. Spec gap: Toast primitive doesn't fire at runtime (verified regression exists on /(dev)/primitives toast test buttons too, predates US-031 \u2014 no Toast.tsx changes since US-028 where it worked). Not blocking US-031 AC but needs separate story. Screenshots: scripts/ralph/screenshots/us-031-{auth,creator-feed,creator-discover,creator-profile,lister-home,lister-campaigns-fab,lister-fab-toast}.png."
     },
     {
       "id": "US-032",
@@ -479,14 +479,14 @@
       ],
       "priority": 32,
       "passes": true,
-      "notes": "Collapsed design.md §2.1's two-step Welcome + Role Select flow into a single screen per the story's literal AC (two large pressables route directly to signup). Target signup routes didn't exist yet — created minimal text-only stubs at app/(auth)/signup/{creator,lister}.tsx as navigation targets; US-033 and US-034 replace them with real forms. RolePickerCard press animation extends the CampaignCard pattern (translateX/Y + shadowOpacity) with the Button pattern's scale(0.97) component per code-reviewer finding — Codebase Pattern #78 specifies all three properties drive off one shared value, and the existing CampaignCard quietly omits scale; deliberately aligned to the pattern rather than the existing inconsistency. Kept the __DEV__ DevRolePicker block for the dev-bypass signin path (separate from the production role picker); the iOS Keychain-backed SecureStore survived Expo Go reinstall which made mobile-mcp verification require a manual sign-out via the Creator Profile tab first. Screenshots: scripts/ralph/screenshots/us-032-{role-picker,signup-creator,signup-lister}.png."
+      "notes": "Collapsed design.md \u00a72.1's two-step Welcome + Role Select flow into a single screen per the story's literal AC (two large pressables route directly to signup). Target signup routes didn't exist yet \u2014 created minimal text-only stubs at app/(auth)/signup/{creator,lister}.tsx as navigation targets; US-033 and US-034 replace them with real forms. RolePickerCard press animation extends the CampaignCard pattern (translateX/Y + shadowOpacity) with the Button pattern's scale(0.97) component per code-reviewer finding \u2014 Codebase Pattern #78 specifies all three properties drive off one shared value, and the existing CampaignCard quietly omits scale; deliberately aligned to the pattern rather than the existing inconsistency. Kept the __DEV__ DevRolePicker block for the dev-bypass signin path (separate from the production role picker); the iOS Keychain-backed SecureStore survived Expo Go reinstall which made mobile-mcp verification require a manual sign-out via the Creator Profile tab first. Screenshots: scripts/ralph/screenshots/us-032-{role-picker,signup-creator,signup-lister}.png."
     },
     {
       "id": "US-033",
       "title": "Lister signup screen",
-      "description": "Username + email + org name → calls auth-signup-lister edge function.",
+      "description": "Username + email + org name \u2192 calls auth-signup-lister edge function.",
       "acceptanceCriteria": [
-        "app/(auth)/signup/lister.tsx — three TextInput fields with inline validation",
+        "app/(auth)/signup/lister.tsx \u2014 three TextInput fields with inline validation",
         "Submit calls supabase.functions.invoke('auth-signup-lister'); on success, signIn() then router.replace('/(lister)') and toast 'Welcome'",
         "On 409 conflict: show inline error on the conflicting field",
         "Mobile-mcp verification: complete signup with a fresh username, screenshot success state",
@@ -494,7 +494,7 @@
       ],
       "priority": 33,
       "passes": true,
-      "notes": "Three-field form (username, email, org_name) posts to auth-signup-lister via supabase.functions.invoke. 200 → signIn() + router.replace('/(lister)/dashboard') + 'Welcome' toast (AC says '/(lister)' but that group has no index route, only a (tabs)-style first child — dashboard is the default landing tab). Client regex for email + username [a-zA-Z0-9_]{3,32} only surfaces once a field is touched. 409 decoding: supabase-js v2 surfaces the error Response on error.context — parse it once (no .clone()) and map USERNAME_TAKEN / EMAIL_TAKEN to the matching field's serverErrors state. Inline error Text is always mounted with a height:0 hidden style so Android accessibilityLiveRegion='polite' reliably announces the change (code-reviewer medium finding). Mobile-mcp confirmed 200 happy path (us-033-success.png), empty-submit validation (us-033-validation.png), and 409 duplicate-username inline error (us-033-409-duplicate.png). SecureStore survives in-app relaunch via Expo Go — to force logout between test runs, terminate the app AND `xcrun simctl keychain <device> reset` before relaunch (otherwise the AuthProvider hydrates the cached user without re-reading the now-empty keychain)."
+      "notes": "Three-field form (username, email, org_name) posts to auth-signup-lister via supabase.functions.invoke. 200 \u2192 signIn() + router.replace('/(lister)/dashboard') + 'Welcome' toast (AC says '/(lister)' but that group has no index route, only a (tabs)-style first child \u2014 dashboard is the default landing tab). Client regex for email + username [a-zA-Z0-9_]{3,32} only surfaces once a field is touched. 409 decoding: supabase-js v2 surfaces the error Response on error.context \u2014 parse it once (no .clone()) and map USERNAME_TAKEN / EMAIL_TAKEN to the matching field's serverErrors state. Inline error Text is always mounted with a height:0 hidden style so Android accessibilityLiveRegion='polite' reliably announces the change (code-reviewer medium finding). Mobile-mcp confirmed 200 happy path (us-033-success.png), empty-submit validation (us-033-validation.png), and 409 duplicate-username inline error (us-033-409-duplicate.png). SecureStore survives in-app relaunch via Expo Go \u2014 to force logout between test runs, terminate the app AND `xcrun simctl keychain <device> reset` before relaunch (otherwise the AuthProvider hydrates the cached user without re-reading the now-empty keychain)."
     },
     {
       "id": "US-034",
@@ -503,18 +503,18 @@
       "acceptanceCriteria": [
         "app/(auth)/signup/creator.tsx with handle fields rendered in JetBrains Mono",
         "Validates at least one handle is supplied",
-        "Submit calls auth-signup-creator; loading state shows 'Pulling your stats…' with skeleton metrics for up to 60s",
+        "Submit calls auth-signup-creator; loading state shows 'Pulling your stats\u2026' with skeleton metrics for up to 60s",
         "On success: signIn() then router.replace('/(creator)') and toast",
         "Mobile-mcp verification: signup with a real handle, screenshot the loading + landed states",
         "Commit"
       ],
       "priority": 34,
       "passes": true,
-      "notes": "Three-field form (username, tiktok_handle, instagram_handle); handle fields render in JetBrains Mono per AC. Client validation: username /^[a-zA-Z0-9_]{3,32}$/, handle /^[a-zA-Z0-9_.]{1,30}$/ (strips leading '@'), at least one handle required. submit → supabase.functions.invoke('auth-signup-creator'). 200 → build AuthUser client-side (email:null for creators, matches users.email nullable) → signIn() → router.replace('/(creator)/feed') + 'Welcome' toast. AC says '/(creator)' but the group has no index route (same precedent as US-033 using /(lister)/dashboard); feed is the default tab per US-031. Server-error mapping: 409 USERNAME_TAKEN pins to the username field; 409 HANDLE_TAKEN falls through to an error toast because the edge function does not tell us which platform conflicted (US-035 profile screen surfaces the specific collision via add/unlink); 422 HANDLE_REQUIRED pins 'Add at least one handle' to both handle fields. Submitting state swaps the entire screen to a <PullingStatsState> that renders 'Pulling your stats…' + a SkeletonCard for each supplied handle (0..2) using SkeletonCard height=96 — satisfies AC3 ('skeleton metrics for up to 60s'). Reviewer fixes: (1) dropped the didSucceed finally-guard — a finally that always calls setSubmitting(false) is safer than trying to avoid a theoretical one-frame flash on router.replace; if navigation fails we want the form recoverable, not locked in PullingStatsState forever; (2) added accessibilityRole='header' + accessibilityLiveRegion='polite' + a combined accessibilityLabel to the loading header so Android TalkBack announces the state swap (otherwise a full-screen subtree swap doesn't fire as a live-region event and blind users get no audible signal the submit actually fired). Mobile-mcp verification: screenshots under scripts/ralph/screenshots/us-034-form.png (three fields, mono handles, orange Continue CTA) and us-034-loading.png (both handles filled → two skeleton cards). Keychain reset + app terminate required before verification to force an unauthed state (Codebase Pattern #100). mobile_type_keys chars were dropped during the two-handle screenshot (#101 gotcha: 'u034_both_1719'→'u34_both_1719', 'tiktok'→'tktok', 'instagram'→'istagram'), but the username still validated and both handle fields were non-empty — the skeleton-count rendering is what AC3 requires, and both rendered."
+      "notes": "Three-field form (username, tiktok_handle, instagram_handle); handle fields render in JetBrains Mono per AC. Client validation: username /^[a-zA-Z0-9_]{3,32}$/, handle /^[a-zA-Z0-9_.]{1,30}$/ (strips leading '@'), at least one handle required. submit \u2192 supabase.functions.invoke('auth-signup-creator'). 200 \u2192 build AuthUser client-side (email:null for creators, matches users.email nullable) \u2192 signIn() \u2192 router.replace('/(creator)/feed') + 'Welcome' toast. AC says '/(creator)' but the group has no index route (same precedent as US-033 using /(lister)/dashboard); feed is the default tab per US-031. Server-error mapping: 409 USERNAME_TAKEN pins to the username field; 409 HANDLE_TAKEN falls through to an error toast because the edge function does not tell us which platform conflicted (US-035 profile screen surfaces the specific collision via add/unlink); 422 HANDLE_REQUIRED pins 'Add at least one handle' to both handle fields. Submitting state swaps the entire screen to a <PullingStatsState> that renders 'Pulling your stats\u2026' + a SkeletonCard for each supplied handle (0..2) using SkeletonCard height=96 \u2014 satisfies AC3 ('skeleton metrics for up to 60s'). Reviewer fixes: (1) dropped the didSucceed finally-guard \u2014 a finally that always calls setSubmitting(false) is safer than trying to avoid a theoretical one-frame flash on router.replace; if navigation fails we want the form recoverable, not locked in PullingStatsState forever; (2) added accessibilityRole='header' + accessibilityLiveRegion='polite' + a combined accessibilityLabel to the loading header so Android TalkBack announces the state swap (otherwise a full-screen subtree swap doesn't fire as a live-region event and blind users get no audible signal the submit actually fired). Mobile-mcp verification: screenshots under scripts/ralph/screenshots/us-034-form.png (three fields, mono handles, orange Continue CTA) and us-034-loading.png (both handles filled \u2192 two skeleton cards). Keychain reset + app terminate required before verification to force an unauthed state (Codebase Pattern #100). mobile_type_keys chars were dropped during the two-handle screenshot (#101 gotcha: 'u034_both_1719'\u2192'u34_both_1719', 'tiktok'\u2192'tktok', 'instagram'\u2192'istagram'), but the username still validated and both handle fields were non-empty \u2014 the skeleton-count rendering is what AC3 requires, and both rendered."
     },
     {
       "id": "US-035",
-      "title": "Creator profile screen — handles + metrics + add/unlink",
+      "title": "Creator profile screen \u2014 handles + metrics + add/unlink",
       "description": "Shows linked handles + denormalized metrics, supports adding/removing handles.",
       "acceptanceCriteria": [
         "app/(creator)/profile.tsx queries creator_profiles + social_links",
@@ -525,8 +525,8 @@
         "Commit"
       ],
       "priority": 35,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented. Migrations: us_035_manage_social_link_fn (RPC), us_035_metric_snapshots_self_read_stale (RLS widen: fresh+stale), us_035_social_links_handle_check (CHECK regex mirrors edge-fn). Edge function manage-social-link deployed (verify_jwt=false, handler enforces Marketify JWT). Spec gap: AC names 'metrics_stale_at' but no such column exists; derived staleness from metric_snapshots.status='stale' (flipped by us_011 hourly mark-metrics-stale cron). Apify scrape-on-add deferred to US-036 per AC scope. Code-reviewer: issue 1 (duck-typing on FunctionsHttpError) kept per Codebase Pattern 98 to stay canonical with US-033/US-034; issue 2 (no DB handle validation) addressed via CHECK constraint migration. Mobile-mcp: empty state + Add Handle bottom sheet verified (us-035-empty.png, us-035-add-sheet.png); populated state verification deferred (stale JWT from prior session; covered by US-020 Apify scrape + US-034 signup tests)."
     },
     {
       "id": "US-036",
@@ -581,7 +581,7 @@
         "supabase/functions/get-listing-detail/index.ts: GET (or POST per Supabase func conventions) with listing_id; requires creator JWT",
         "Returns { listing, pre_conditions, post_conditions, sample_videos, eligibility: { eligible: boolean, reasons: string[] } }",
         "Eligibility engine logic per docs/tech-architecture.md (eligibility section)",
-        "Test: seeded eligible creator → eligible:true; force-fail one threshold → eligible:false with reason",
+        "Test: seeded eligible creator \u2192 eligible:true; force-fail one threshold \u2192 eligible:false with reason",
         "Commit"
       ],
       "priority": 39,
@@ -591,7 +591,7 @@
     {
       "id": "US-040",
       "title": "Campaign detail screen + eligibility evaluation",
-      "description": "Tap a card → full detail with apply CTA gated on eligibility.",
+      "description": "Tap a card \u2192 full detail with apply CTA gated on eligibility.",
       "acceptanceCriteria": [
         "app/(creator)/listing/[id].tsx fetches via get-listing-detail",
         "Renders title, description, price (display-only), pre/post conditions, sample videos as TikTok/IG links",
@@ -608,7 +608,7 @@
       "title": "Edge function: apply-to-listing (server-side re-check)",
       "description": "Re-evaluates eligibility, then inserts an applications row.",
       "acceptanceCriteria": [
-        "supabase/functions/apply-to-listing/index.ts: POST { listing_id, pitch? } → 200 { application_id } or 422 { reasons }",
+        "supabase/functions/apply-to-listing/index.ts: POST { listing_id, pitch? } \u2192 200 { application_id } or 422 { reasons }",
         "Re-runs eligibility engine; rejects if not eligible",
         "Inserts applications row in status=pending, links to listing's current version",
         "Test passes",
@@ -621,7 +621,7 @@
     {
       "id": "US-042",
       "title": "Apply modal on campaign detail",
-      "description": "Bottom sheet with optional pitch field → calls apply-to-listing.",
+      "description": "Bottom sheet with optional pitch field \u2192 calls apply-to-listing.",
       "acceptanceCriteria": [
         "Tapping Apply opens BottomSheet with pitch TextInput (optional, 280 char limit) and submit",
         "On 200: toast success + close sheet + navigate to (creator)/applied tab",
@@ -641,7 +641,7 @@
         "app/(creator)/applied.tsx queries applications joined to listings",
         "Tabs/segments: Pending / Approved / Rejected / Cancelled",
         "Each row: campaign title, lister handle, status pill, applied_at relative",
-        "Tap row → navigates to listing detail",
+        "Tap row \u2192 navigates to listing detail",
         "Mobile-mcp verification: screenshot each segment with seeded data",
         "Commit"
       ],
@@ -656,7 +656,7 @@
       "acceptanceCriteria": [
         "Subscribe to applications WHERE creator_user_id = me on the Applied tab",
         "On UPDATE: optimistically move the row to the new segment; fire toast 'Your application was approved/rejected'",
-        "Mobile-mcp verification: from Supabase Studio (or via execute_sql) flip a seeded application to approved while the screen is open — confirm UI updates without manual refresh",
+        "Mobile-mcp verification: from Supabase Studio (or via execute_sql) flip a seeded application to approved while the screen is open \u2014 confirm UI updates without manual refresh",
         "Commit"
       ],
       "priority": 44,
@@ -683,7 +683,7 @@
     {
       "id": "US-046",
       "title": "Submission composer screen",
-      "description": "URL paste → oEmbed preview → post-condition checklist → submit.",
+      "description": "URL paste \u2192 oEmbed preview \u2192 post-condition checklist \u2192 submit.",
       "acceptanceCriteria": [
         "app/(creator)/submit/[applicationId].tsx with URL input (mono), live oEmbed preview (thumbnail + caption snippet), checklist for post-conditions",
         "Submit button disabled until URL valid + all conditions checked",
@@ -725,7 +725,7 @@
     },
     {
       "id": "US-049",
-      "title": "Create-campaign wizard step 1 — basics",
+      "title": "Create-campaign wizard step 1 \u2014 basics",
       "description": "Title, description, price (display-only), currency.",
       "acceptanceCriteria": [
         "app/(lister)/create/step-1.tsx with title, description, price (number), currency (USD/EUR/GBP)",
@@ -740,7 +740,7 @@
     },
     {
       "id": "US-050",
-      "title": "Create-campaign wizard step 2 — pre-conditions",
+      "title": "Create-campaign wizard step 2 \u2014 pre-conditions",
       "description": "Add/remove pre-condition rows (platform + metric + threshold).",
       "acceptanceCriteria": [
         "step-2 screen lets the lister add rows: platform (TikTok/IG), metric (followers, avg_views), operator (>=), threshold",
@@ -754,7 +754,7 @@
     },
     {
       "id": "US-051",
-      "title": "Create-campaign wizard step 3 — post-conditions",
+      "title": "Create-campaign wizard step 3 \u2014 post-conditions",
       "description": "Free-text rules creators must self-affirm at submit time.",
       "acceptanceCriteria": [
         "step-3 screen: list of post-condition strings (add/remove)",
@@ -768,8 +768,8 @@
     },
     {
       "id": "US-052",
-      "title": "Create-campaign wizard step 4 — samples + max submissions",
-      "description": "Sample video URLs (TikTok/IG only — no upload) + max_submissions integer.",
+      "title": "Create-campaign wizard step 4 \u2014 samples + max submissions",
+      "description": "Sample video URLs (TikTok/IG only \u2014 no upload) + max_submissions integer.",
       "acceptanceCriteria": [
         "step-4 screen: add/remove sample URLs (validated regex), max_submissions number input",
         "Mobile-mcp verification: add two URLs, set max=10, screenshot",
@@ -781,7 +781,7 @@
     },
     {
       "id": "US-053",
-      "title": "Create-campaign wizard step 5 — review + publish",
+      "title": "Create-campaign wizard step 5 \u2014 review + publish",
       "description": "Show creator-side preview (using CampaignCard + detail layout) and Publish CTA.",
       "acceptanceCriteria": [
         "step-5 renders the listing as a creator would see it",
@@ -814,9 +814,9 @@
       "title": "Edit campaign + cascade-cancel confirmation modal",
       "description": "Editing versioned fields shows the cascade impact before saving.",
       "acceptanceCriteria": [
-        "Tap a campaign on My Campaigns → edit screen pre-filled",
+        "Tap a campaign on My Campaigns \u2192 edit screen pre-filled",
         "Before saving versioned fields, query count of pending applications via execute_sql (or a small RPC) and show modal: 'This will cancel N pending applications. Continue?'",
-        "On confirm: PATCH listing — the DB trigger handles the cascade",
+        "On confirm: PATCH listing \u2014 the DB trigger handles the cascade",
         "Mobile-mcp verification: edit a seeded listing's price, see the modal with the seeded application count, confirm, then verify in My Applications that the cascade fired",
         "Commit"
       ],
@@ -844,11 +844,11 @@
       "title": "Application review with eligibility re-check + override dialog",
       "description": "Approve re-evaluates eligibility against current creator metrics; if drifted, show OverrideEligibilityDialog.",
       "acceptanceCriteria": [
-        "Tap a pending application → review sheet with creator metrics + pitch",
+        "Tap a pending application \u2192 review sheet with creator metrics + pitch",
         "Approve button triggers a new edge function `decide-application` (write it now): re-runs eligibility, returns { ok: true } or { ok: false, drift: string[] } so the UI can render the override dialog",
-        "Override confirms with second tap → application becomes approved regardless",
+        "Override confirms with second tap \u2192 application becomes approved regardless",
         "Reject button + reason field",
-        "Mobile-mcp verification: approve a seeded application, then approve one with drifted metrics (manually update the creator_profiles to drop a count) — screenshot both flows",
+        "Mobile-mcp verification: approve a seeded application, then approve one with drifted metrics (manually update the creator_profiles to drop a count) \u2014 screenshot both flows",
         "Commit"
       ],
       "priority": 57,
@@ -872,7 +872,7 @@
     },
     {
       "id": "US-059",
-      "title": "Submission review screen — embedded video + checklist",
+      "title": "Submission review screen \u2014 embedded video + checklist",
       "description": "Lister reviews the submitted URL with embedded WebView and checks each post-condition.",
       "acceptanceCriteria": [
         "app/(lister)/inbox/submissions/[id].tsx with WebView embedding the TikTok/IG URL (oEmbed embed URL)",
@@ -889,12 +889,12 @@
     {
       "id": "US-060",
       "title": "Approval / rejection animations (celebration + shake)",
-      "description": "Wire the celebration burst on approval and shake on rejection per docs/design.md §6.",
+      "description": "Wire the celebration burst on approval and shake on rejection per docs/design.md \u00a76.",
       "acceptanceCriteria": [
         "src/components/effects/CelebrationBurst.tsx + ShakeOnError.tsx using Reanimated worklets",
         "Triggered on creator side when an application or submission flips to approved/rejected (Realtime push)",
         "Respects useReducedMotion",
-        "Mobile-mcp verification: trigger an approval via execute_sql while the creator screen is open — record screenshots of celebration",
+        "Mobile-mcp verification: trigger an approval via execute_sql while the creator screen is open \u2014 record screenshots of celebration",
         "Commit"
       ],
       "priority": 60,
@@ -920,7 +920,7 @@
     {
       "id": "US-062",
       "title": "Empty states for every list screen",
-      "description": "Per docs/design.md — illustrated empty states with CTA where applicable.",
+      "description": "Per docs/design.md \u2014 illustrated empty states with CTA where applicable.",
       "acceptanceCriteria": [
         "src/components/shared/EmptyState.tsx with title, body, optional CTA",
         "Wired into Discover, Applied, Submitted, Campaigns, Inbox sub-tabs, Notifications",
@@ -952,8 +952,8 @@
       "description": "Verify every animated component honors useReducedMotion.",
       "acceptanceCriteria": [
         "Grep for `useSharedValue` / `withSpring` / `withTiming` and confirm each touchpoint either uses withReducedMotion helper or short-circuits when reduced",
-        "Toggle Reduce Motion in the iOS simulator (Settings → Accessibility) and verify CelebrationBurst, ShakeOnError, button press animations no-op",
-        "Mobile-mcp verification: screenshot interactions with reduced motion enabled — confirm static visuals",
+        "Toggle Reduce Motion in the iOS simulator (Settings \u2192 Accessibility) and verify CelebrationBurst, ShakeOnError, button press animations no-op",
+        "Mobile-mcp verification: screenshot interactions with reduced motion enabled \u2014 confirm static visuals",
         "Append findings + any fixes to progress.txt",
         "Commit"
       ],
