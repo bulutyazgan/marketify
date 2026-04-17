@@ -31,6 +31,8 @@ Started: (will be replaced on first run)
 - **Enum canonical list is docs/tech-architecture.md §4.2** (lines 399-427). After generating types, verify `src/types/supabase.ts` Constants block matches it exactly.
 - **Local migration files live under `supabase/migrations/` with `YYYYMMDDHHMMSS_us_NNN_description.sql`.** Keep filename and MCP migration `name` (no timestamp prefix) consistent. Commit every applied migration — `list_migrations` is the DB side, the file is the source of truth for fresh applies.
 - **`app_private` schema was created in US-003** via a companion migration (`us_003_app_private_schema`). Revoke is already in place for `anon` and `authenticated`. Triggers / security-definer functions in later stories should target this schema.
+- **Reference `citext` as `extensions.citext` in every migration.** US-003 installed it with `with schema extensions`; the default `search_path` used by migrations does not include that schema, so an unqualified `citext` fails to resolve.
+- **Supabase auto-enables RLS on new `public.*` tables** on this project. New table migrations will show up in `get_advisors({type:'security'})` as INFO-level `rls_enabled_no_policy` (not `rls_disabled`). These INFO findings are benign until policies land in US-009 — no commit-blocking action needed.
 
 ---
 
@@ -57,6 +59,18 @@ Started: (will be replaced on first run)
   - Reviewer flagged missing `app_private` schema — §4.7's extension block includes schema + revoke. Future baseline migrations should follow §4.7 ordering even when the immediate story doesn't need the schema yet.
   - Security advisor WARNs on any extension in `public`; always pin to `extensions` schema except for `pg_cron`.
   - `apply_migration` stores the SQL body verbatim; editing the local `.sql` file afterwards drifts from the migrations table. If you must change DB state, add another migration.
+---
+
+## 2026-04-17 09:05 — US-004
+- Applied `us_004_identity_tables` via Supabase MCP creating `public.users`, `public.creator_profiles` (all 9 denorm metric columns), `public.lister_profiles`, `public.social_links` (with the two partial unique indexes on `(user_id, platform)` and `(platform, handle)` scoped to `status <> 'unlinked'`).
+- Regenerated `src/types/supabase.ts` — the four new tables appear under `Database["public"]["Tables"]`; enums unchanged from US-003.
+- Files changed: `supabase/migrations/20260417090000_us_004_identity_tables.sql` (new), `src/types/supabase.ts`
+- Quality checks: tsc ✓ / lint ✓ / supabase advisors ✓ (only INFO `rls_enabled_no_policy` — deferred to US-009 per story) / mobile-mcp n/a (DB-only story)
+- Code-reviewer verdict: approved (no medium+ findings; field-for-field match against §4.7 lines 481–562)
+- **Learnings for future iterations:**
+  - Qualify `citext` as `extensions.citext` — default migration search_path does not include `extensions`.
+  - Supabase auto-enables RLS on new `public.*` tables on this project; advisors show INFO `rls_enabled_no_policy` (not `rls_disabled`) until policies land in US-009. Harmless until then.
+  - The spec's `create index on public.tbl (...)` (anonymous) is fine to keep verbatim — later migrations referring back to these indexes can use `pg_indexes` or rename at that point if needed.
 ---
 
 ## 2026-04-17 07:45 — US-002

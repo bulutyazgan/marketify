@@ -14,7 +14,189 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      creator_profiles: {
+        Row: {
+          bio: string | null
+          country: string | null
+          created_at: string
+          display_name: string | null
+          instagram_avg_views_last_10: number | null
+          instagram_follower_count: number | null
+          instagram_media_count: number | null
+          metrics_fetched_at: string | null
+          tiktok_avg_views_last_10: number | null
+          tiktok_follower_count: number | null
+          tiktok_is_verified: boolean | null
+          tiktok_total_likes: number | null
+          tiktok_video_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          country?: string | null
+          created_at?: string
+          display_name?: string | null
+          instagram_avg_views_last_10?: number | null
+          instagram_follower_count?: number | null
+          instagram_media_count?: number | null
+          metrics_fetched_at?: string | null
+          tiktok_avg_views_last_10?: number | null
+          tiktok_follower_count?: number | null
+          tiktok_is_verified?: boolean | null
+          tiktok_total_likes?: number | null
+          tiktok_video_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          country?: string | null
+          created_at?: string
+          display_name?: string | null
+          instagram_avg_views_last_10?: number | null
+          instagram_follower_count?: number | null
+          instagram_media_count?: number | null
+          metrics_fetched_at?: string | null
+          tiktok_avg_views_last_10?: number | null
+          tiktok_follower_count?: number | null
+          tiktok_is_verified?: boolean | null
+          tiktok_total_likes?: number | null
+          tiktok_video_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lister_profiles: {
+        Row: {
+          created_at: string
+          description: string | null
+          logo_path: string | null
+          org_name: string
+          updated_at: string
+          user_id: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          logo_path?: string | null
+          org_name: string
+          updated_at?: string
+          user_id: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          logo_path?: string | null
+          org_name?: string
+          updated_at?: string
+          user_id?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lister_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_links: {
+        Row: {
+          created_at: string
+          fail_count: number
+          handle: string
+          handle_confirmed_at: string | null
+          id: string
+          last_scrape_attempt_at: string | null
+          last_scrape_error: string | null
+          last_scrape_run_id: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          status: Database["public"]["Enums"]["social_link_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fail_count?: number
+          handle: string
+          handle_confirmed_at?: string | null
+          id?: string
+          last_scrape_attempt_at?: string | null
+          last_scrape_error?: string | null
+          last_scrape_run_id?: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          status?: Database["public"]["Enums"]["social_link_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fail_count?: number
+          handle?: string
+          handle_confirmed_at?: string | null
+          id?: string
+          last_scrape_attempt_at?: string | null
+          last_scrape_error?: string | null
+          last_scrape_run_id?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
+          status?: Database["public"]["Enums"]["social_link_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_links_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          email: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
