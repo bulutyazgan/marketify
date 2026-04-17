@@ -790,6 +790,14 @@ export type Database = {
         }
         Returns: Json
       }
+      auth_signup_creator: {
+        Args: {
+          p_instagram_handle?: string
+          p_tiktok_handle?: string
+          p_username: string
+        }
+        Returns: Json
+      }
       auth_signup_lister: {
         Args: {
           p_email: string
