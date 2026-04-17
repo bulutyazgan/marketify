@@ -746,6 +746,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auth_signup_lister: {
+        Args: {
+          p_email: string
+          p_org_name: string
+          p_username: string
+          p_website_url?: string
+        }
+        Returns: Json
+      }
       current_user_id: { Args: never; Returns: string }
       current_user_role: {
         Args: never

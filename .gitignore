@@ -45,3 +45,6 @@ yarn-error.*
 scripts/ralph/.last-branch
 scripts/ralph/archive/
 scripts/ralph/ralph.log
+
+# Supabase CLI local cache
+supabase/.temp/
