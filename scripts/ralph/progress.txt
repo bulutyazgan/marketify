@@ -379,3 +379,15 @@ Started: (will be replaced on first run)
   - Cheap edge-function smoke tests should short-circuit every assertion BEFORE Apify dispatch. 11 assertions in `scripts/test/metrics-refresh.ts`; all exit with a 4xx/5xx before reaching the dispatch line, so repeated runs cost zero Apify credits. Happy-path (200 queued) is verified via mobile-mcp at UI-wiring time, not in the smoke test.
   - `metric_snapshots` rows inserted by test fixtures must be cleaned up by id in the `finally` block via service-role DELETE — the `is_latest=true, status='fresh'` partial unique index (if one exists per `(social_link_id, scrape_mode)`) would otherwise block subsequent test runs. Track inserted ids in a module-level array and `DELETE ?id=in.(...)` them out.
 ---
+
+## 2026-04-17 18:30 — US-022
+- Added `src/design/tokens.ts` exporting `colors` (all 20 §1.2 palette rows), `spacing` (xs=4, sm=8, md=12, base=16, lg=20, xl=24, xxl=32, xxxl=48), `radii` (card=12, button=10, input=10, image=8, pill=999 per spec §1.5), and `shadows.hard` (RN-shaped: offset 3×3, ink color, opacity 1, radius 0, elevation 4) + `shadows.none`. All four exports are `as const` so consumers get literal-type narrowing; matching `ColorToken` / `SpacingToken` / `RadiusToken` / `ShadowToken` type aliases are exported for typed prop surfaces.
+- Spec gap: story AC said `radii: 4 input` and "shadows hard 2px ink offset". Spec `docs/design.md` §1.5 says `input=10px` and `shadow offset=3px`. Per the Ralph "specs win" rule, followed the spec; documented in the tokens file header. Only deviation from the story wording; no downstream story should be blocked.
+- Files changed: `src/design/tokens.ts` (new)
+- Quality checks: tsc ✓ / lint ✓ / supabase advisors n/a / mobile-mcp n/a (pure TS module, no UI)
+- Code-reviewer verdict: approved (Medium: `colors.shadow` duplicates `colors.ink` hex — addressed with an inline comment marking the intentional equivalence, per palette-completeness requirement).
+- **Learnings for future iterations:**
+  - Whenever the story AC contradicts `docs/design.md` on a spec-level detail (hex, radius, offset, font), the spec wins by Ralph rule — but always document the deviation in a file-header comment AND the progress note so the next iteration doesn't "fix" it back the wrong way.
+  - The hard shadow must include both iOS (`shadowColor`/`shadowOffset`/`shadowOpacity`/`shadowRadius`) and android (`elevation`) keys. Pick an elevation that visually approximates the offset (we used `elevation: 4` for offset=3) — android cannot render a solid offset shadow, so elevation is the best-fit compromise.
+  - Tokens are plain TS object literals, not a hook. Do NOT reach for `useTheme()` or context for static values; keeps motion/reduced-motion logic the only branching concern.
+---

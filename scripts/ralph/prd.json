@@ -333,8 +333,8 @@
         "Commit"
       ],
       "priority": 22,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Radii and shadow match docs/design.md §1.5 (card=12, button=10, input=10, image=8, pill=999; shadow offset=3px) — overrides the story's input=4 + 2px-offset wording per 'specs win' rule. All 20 §1.2 palette rows present + as const literal types."
     },
     {
       "id": "US-023",
