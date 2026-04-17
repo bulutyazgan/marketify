@@ -746,6 +746,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apify_webhook_persist_tiktok_profile: {
+        Args: {
+          p_avg_views_last_10: number
+          p_error_message: string
+          p_fetched_at: string
+          p_follower_count: number
+          p_following_count: number
+          p_is_verified: boolean
+          p_raw_payload: Json
+          p_run_id: string
+          p_social_link_id: string
+          p_status: Database["public"]["Enums"]["metric_status"]
+          p_total_likes: number
+          p_video_count: number
+        }
+        Returns: Json
+      }
       auth_signup_lister: {
         Args: {
           p_email: string
