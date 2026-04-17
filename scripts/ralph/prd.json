@@ -493,8 +493,8 @@
         "Commit"
       ],
       "priority": 33,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Three-field form (username, email, org_name) posts to auth-signup-lister via supabase.functions.invoke. 200 → signIn() + router.replace('/(lister)/dashboard') + 'Welcome' toast (AC says '/(lister)' but that group has no index route, only a (tabs)-style first child — dashboard is the default landing tab). Client regex for email + username [a-zA-Z0-9_]{3,32} only surfaces once a field is touched. 409 decoding: supabase-js v2 surfaces the error Response on error.context — parse it once (no .clone()) and map USERNAME_TAKEN / EMAIL_TAKEN to the matching field's serverErrors state. Inline error Text is always mounted with a height:0 hidden style so Android accessibilityLiveRegion='polite' reliably announces the change (code-reviewer medium finding). Mobile-mcp confirmed 200 happy path (us-033-success.png), empty-submit validation (us-033-validation.png), and 409 duplicate-username inline error (us-033-409-duplicate.png). SecureStore survives in-app relaunch via Expo Go — to force logout between test runs, terminate the app AND `xcrun simctl keychain <device> reset` before relaunch (otherwise the AuthProvider hydrates the cached user without re-reading the now-empty keychain)."
     },
     {
       "id": "US-034",
