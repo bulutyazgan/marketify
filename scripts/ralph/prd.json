@@ -571,7 +571,7 @@
       ],
       "priority": 38,
       "passes": false,
-      "notes": ""
+      "notes": "2026-04-17: skipped this iteration — same JWT-drift blocker as US-036. Re-probed today by signing a real creator JWT via auth-signup-lister edge fn → PostgREST /rest/v1/lister_profiles returned 401 PGRST301 'No suitable key or wrong key type'. The Discover feed AC hits PostgREST directly for listings + creator_profiles under the signed-in creator's JWT; until the project JWT secret is re-aligned with MARKETIFY_JWT_SECRET in the Supabase dashboard, every authed row read fails at the gateway and the feed would show an error state regardless of code. Moving forward with US-040 which routes through the get-listing-detail edge function and is NOT impacted."
     },
     {
       "id": "US-039",
@@ -600,8 +600,8 @@
         "Commit"
       ],
       "priority": 40,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "2026-04-17: Campaign detail at app/(creator)/listing/[id].tsx posts to get-listing-detail (US-039), renders hero card + sample videos (link-out via Linking.openURL) + Eligibility rail with check/X icons + 'What to film' post-condition bullets + Brief section + sticky footer CTA gated per docs/design.md \u00a74.2 (eligible: orange 'Apply to collab'; ineligible: disabled 'Not eligible yet' + bullet summary of failed conditions; has_active_application: Applied pill + disabled CTA; non-active listing: CTA hidden, inactive banner at top). Apply action is a stub toast per AC scope \u2014 US-041/US-042 land the real apply. Seed migration us_040_seed_ineligible_listing adds Mega-Luxe listing with 3 PRE thresholds that fail seed_creator. Feed has a __DEV__ launcher (Codebase Pattern #96) that routes to both seeded listings so the screen is reachable before US-038. Three screenshots: us-040-eligible-acme.png (green checks, 'Apply to collab' CTA), us-040-ineligible-acme.png (2 fails against Acme thresholds), us-040-ineligible-luxe.png (3 fails against the new Mega-Luxe seed). Spec gap: docs/design.md \u00a74.2 references a lister handle in the header \u2014 get-listing-detail does not yet expose a lister_profiles join, deferred. Code-reviewer's two Important findings were dismissed after verification: (1) operator CHECK on listing_conditions already permits 'contains' (migration applied cleanly, confirmed via pg_constraint); (2) sticky footer safe-area inset is handled by the TabBar in (creator)/_layout.tsx which already absorbs the home indicator \u2014 screenshots on iPhone 17 Pro sim confirm clean spacing, and no existing screen uses useSafeAreaInsets so adding one would break convention."
     },
     {
       "id": "US-041",
