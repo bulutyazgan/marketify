@@ -1,0 +1,978 @@
+{
+  "project": "Marketify",
+  "branchName": "ralph/marketify-mvp",
+  "description": "Mobile marketplace (Expo + RN + Supabase) where creators claim bounties from listers. v1 MVP per docs/product-plan.md §3.1, design language per docs/design.md, schema per docs/tech-architecture.md §4.7. No payments, no OAuth — Apify scrapes power creator metrics.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Bootstrap Expo + TypeScript app skeleton",
+      "description": "Initialize the Expo app at the repo root so future stories have something to build into.",
+      "acceptanceCriteria": [
+        "Run `npx create-expo-app@latest . --template blank-typescript --no-install` (skip install — install with bun after)",
+        "Install deps with `bun install` (bun is available; do NOT use npm/yarn)",
+        "Add `app.json` config: name=Marketify, slug=marketify, scheme=marketify, ios.bundleIdentifier=com.marketify.app, android.package=com.marketify.app",
+        "Add `tsconfig.json` strict mode + paths: `@/*` → `src/*`",
+        "Create `src/` with empty `components/`, `screens/`, `lib/`, `types/` subfolders (each with a `.gitkeep`)",
+        "Add scripts to package.json: `typecheck` (tsc --noEmit), `lint` (expo lint)",
+        "`bun run typecheck` passes",
+        "Commit"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Install core runtime deps (Supabase, Reanimated, Navigation, NativeWind)",
+      "description": "Pre-install the libraries the rest of the build depends on so subsequent stories don't keep adding deps.",
+      "acceptanceCriteria": [
+        "Install: @supabase/supabase-js, @react-native-async-storage/async-storage, react-native-url-polyfill, expo-router, react-native-reanimated, react-native-gesture-handler, react-native-svg, lucide-react-native, expo-haptics, expo-linking, expo-constants, expo-font, expo-status-bar, react-native-mmkv",
+        "Configure Reanimated babel plugin in `babel.config.js`",
+        "Configure expo-router entry point in package.json (`main: expo-router/entry`)",
+        "`bun run typecheck` passes",
+        "App boots in iOS simulator without red-screen (verify with mobile-mcp: launch + take screenshot)",
+        "Commit"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create Supabase project + apply baseline extensions/enums migration",
+      "description": "Stand up the Supabase project and the foundational schema enums per docs/tech-architecture.md §4.7.",
+      "acceptanceCriteria": [
+        "Use Supabase MCP `list_organizations` then `create_project` (name=marketify-mvp, region=us-east-1) if no project exists; else use existing",
+        "Save project ref + URL + publishable key into `.env` keys SUPABASE_URL and SUPABASE_ANON_KEY (do NOT print values back to chat)",
+        "Apply migration `us_003_baseline_enums`: enable extensions (pgcrypto, pg_cron if available), create enums per tech-architecture.md §4.7 (user_role, listing_status, application_status, submission_status, scrape_mode, etc.)",
+        "Run `get_advisors({type:'security'})` — note any findings (expected: low/none for enums)",
+        "Run `generate_typescript_types` → write to `src/types/supabase.ts`",
+        "Commit migration + types"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Migration: users + creator_profiles + lister_profiles + social_links",
+      "description": "Identity tables per tech-architecture.md §4.7. No Supabase Auth — custom JWT.",
+      "acceptanceCriteria": [
+        "Migration `us_004_identity_tables` creates: users, creator_profiles, lister_profiles, social_links exactly per docs/tech-architecture.md §4.7",
+        "Include all denormalized creator metric columns (tiktok_follower_count, instagram_avg_views_last_10, instagram_follower_count, etc.)",
+        "Foreign keys + unique constraints per spec",
+        "Regenerate TypeScript types",
+        "`get_advisors({type:'security'})` — fix any errors before commit (RLS will be added in a later story; expect a 'rls disabled' warning, that is acceptable here)",
+        "Commit"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Migration: listings + listing_versions + pre/post conditions",
+      "description": "Campaign-side tables per tech-architecture.md §4.7 including the version table the cascade trigger relies on.",
+      "acceptanceCriteria": [
+        "Migration `us_005_listing_tables` creates: listings, listing_versions, listing_pre_conditions, listing_post_conditions",
+        "Include cache columns `min_followers_tiktok`, `min_followers_instagram` as plain integer (NOT generated) on listings, with btree indexes",
+        "Foreign keys, NOT NULL, defaults exactly per spec",
+        "Regenerate TypeScript types",
+        "Commit"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Migration: applications + submissions tables",
+      "description": "Pipeline tables that drive the creator/lister workflow.",
+      "acceptanceCriteria": [
+        "Migration `us_006_pipeline_tables` creates: applications, submissions per spec",
+        "Include status enums, foreign keys, the reserved revision-request column on submissions per tech-architecture.md",
+        "Regenerate TypeScript types",
+        "Commit"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Migration: metric_snapshots + denormalization trigger",
+      "description": "Snapshot table + the BEFORE INSERT trigger that mirrors values to creator_profiles, scoped by scrape_mode and serialized with pg_advisory_xact_lock.",
+      "acceptanceCriteria": [
+        "Migration `us_007_metric_snapshots` creates the table with `apify_run_id` unique constraint and `scrape_mode` enum column",
+        "Includes the BEFORE INSERT trigger function that branches on scrape_mode and updates the matching denorm columns on creator_profiles",
+        "Acquires `pg_advisory_xact_lock` keyed on (user_id, scrape_mode) before mutating",
+        "Test via `execute_sql`: insert two snapshots for the same user → verify creator_profiles updates correctly",
+        "Commit"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Migration: notifications + events audit table",
+      "description": "Cross-cutting tables for in-app notifications and the append-only audit log.",
+      "acceptanceCriteria": [
+        "Migration `us_008_notifications_events` creates notifications and events tables per spec",
+        "events is append-only (revoke UPDATE/DELETE)",
+        "Regenerate TypeScript types",
+        "Commit"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Migration: RLS policies on every user-data table",
+      "description": "Enable RLS + write policies per tech-architecture.md §4.7 (RLS section). JWT claims drive scoping.",
+      "acceptanceCriteria": [
+        "Migration `us_009_rls_policies` enables RLS on users, creator_profiles, lister_profiles, social_links, listings, listing_versions, listing_pre_conditions, listing_post_conditions, applications, submissions, metric_snapshots, notifications, events",
+        "Policies match docs/tech-architecture.md (creator can read own + active listings; lister can manage own listings/applications; etc.)",
+        "After applying: `get_advisors({type:'security'})` returns zero error-level findings",
+        "Verification via `execute_sql` with a fake JWT claim: confirms cross-user reads are blocked",
+        "Commit"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Migration: listing-version cascade trigger",
+      "description": "Postgres trigger that bumps a version + cascades `cancelled_listing_edit` to pending applications when versioned fields change.",
+      "acceptanceCriteria": [
+        "Migration `us_010_cascade_trigger` per docs/tech-architecture.md",
+        "Trigger fires on UPDATE of price, currency, max_submissions, pre_conditions, post_conditions, sample videos",
+        "Snapshots the prior state into listing_versions and updates pending applications to status=cancelled_listing_edit + emits notifications rows",
+        "Test via `execute_sql`: edit a seeded listing's price → verify a new listing_versions row exists, pending applications cascade to cancelled, notifications inserted",
+        "Commit"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Migration: pg_cron jobs (daily refresh, hourly staleness)",
+      "description": "Scheduled jobs that keep metrics fresh per docs/tech-architecture.md §3 + product-plan §3.1.",
+      "acceptanceCriteria": [
+        "Migration `us_011_cron_jobs` schedules: (a) daily creator-metrics refresh job (calls the metrics-refresh edge function), (b) hourly staleness marker that flips `metrics_stale_at` after 24h",
+        "If pg_cron is not available in the project's plan, comment the migration with a TODO and add a `Spec gap:` line to progress.txt — do not silently skip",
+        "Commit"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Seed data: one lister, one active listing, one creator with two handles",
+      "description": "Minimal seed for verifying RLS + later UI work.",
+      "acceptanceCriteria": [
+        "Migration `us_012_seed` (or a SQL script in `supabase/seed.sql` if Supabase prefers) inserts: 1 lister with email, 1 listing in status=active with both pre and post conditions, 1 creator with tiktok_handle + instagram_handle and fake metric_snapshots covering all three scrape_modes",
+        "Verify via `execute_sql` that creator_profiles denorm columns reflect the seeded snapshots",
+        "Commit"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Custom JWT helper (edge function shared module)",
+      "description": "Shared TS module under supabase/functions/_shared/jwt.ts that signs and verifies HS256 JWTs with claims (sub, role, iat, exp).",
+      "acceptanceCriteria": [
+        "supabase/functions/_shared/jwt.ts exports signJwt(claims) and verifyJwt(token)",
+        "HS256, secret pulled from env var MARKETIFY_JWT_SECRET (NOT SUPABASE_JWT_SECRET — we are signing our own)",
+        "Claims include: sub (user_id), role ('creator'|'lister'), iat, exp (7d default)",
+        "supabase/functions/_shared/cors.ts exports a `corsHeaders` constant for reuse",
+        "Add MARKETIFY_JWT_SECRET to .env.example",
+        "Commit"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Edge function: auth-signup-lister",
+      "description": "Listers sign up with username + email + org name → returns JWT.",
+      "acceptanceCriteria": [
+        "supabase/functions/auth-signup-lister/index.ts: POST { username, email, org_name } → 200 { token, user_id, role }",
+        "Validates uniqueness on username + email; 409 on conflict",
+        "Inserts users + lister_profiles row in a single transaction",
+        "Signs JWT via _shared/jwt.ts",
+        "Deploy via `deploy_edge_function`",
+        "Round-trip test via `execute_sql` + curl-equivalent (use fetch in a tiny TS test script under scripts/test/) and confirm a row appears in users + lister_profiles",
+        "Commit"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Apify client wrapper (edge function shared module)",
+      "description": "Single place that calls Apify actors with consistent error handling. Per docs/tech-architecture.md §3.",
+      "acceptanceCriteria": [
+        "supabase/functions/_shared/apify.ts exports runTikTokProfile(handle), runInstagramDetails(handle), runInstagramPosts(handle)",
+        "Each function POSTs to Apify with the actor input shape from docs/tech-architecture.md §3, includes APIFY_KEY from env",
+        "Supports a synchronous `waitSecs` parameter (default 60) so callers can await completion or fall back to webhooks",
+        "Returns { runId, datasetId, status }",
+        "Unit test (Deno test in supabase/functions/_shared/apify.test.ts) mocking fetch — verifies request shapes",
+        "Commit"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Edge function: apify-webhook receiver (tiktok_profile branch)",
+      "description": "Receive Apify run-finished webhooks, verify shared secret, fetch dataset, upsert metric_snapshots.",
+      "acceptanceCriteria": [
+        "supabase/functions/apify-webhook/index.ts: POST handler verifies APIFY_WEBHOOK_SECRET via constant-time compare",
+        "Branch: when scrape_mode resolves to 'tiktok_profile' (passed in webhook payload metadata), parse the dataset and upsert one metric_snapshots row keyed on apify_run_id",
+        "Idempotent — duplicate webhooks for the same run_id are no-ops",
+        "Add APIFY_WEBHOOK_SECRET to .env.example",
+        "Test: simulate a webhook payload via fetch from a script and verify the row + denorm trigger fired",
+        "Commit"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Edge function: apify-webhook (ig_details branch)",
+      "description": "Add the IG details branch to the existing webhook handler.",
+      "acceptanceCriteria": [
+        "Extend supabase/functions/apify-webhook/index.ts with the ig_details case per docs/tech-architecture.md §3",
+        "Updates the IG-related denorm columns only (does not touch tiktok or ig_posts fields)",
+        "Test passes for a synthetic ig_details payload",
+        "Commit"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Edge function: apify-webhook (ig_posts branch)",
+      "description": "IG posts branch — populates instagram_avg_views_last_10 etc.",
+      "acceptanceCriteria": [
+        "Extend webhook with ig_posts case",
+        "Computes the rolling 10-post avg per spec",
+        "Test passes",
+        "Commit"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Edge function: auth-signup-creator (handle inputs, no scrape yet)",
+      "description": "Creator signup that records handles but does not yet kick scrapes — those come in US-020.",
+      "acceptanceCriteria": [
+        "supabase/functions/auth-signup-creator/index.ts: POST { username, tiktok_handle?, instagram_handle? } → 200 { token, user_id, role }",
+        "Requires at least one handle; 422 if both missing",
+        "Inserts users + creator_profiles + social_links rows in a single transaction",
+        "Signs and returns JWT",
+        "Round-trip test verified",
+        "Commit"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Wire signup-creator to kick Apify scrapes (waitSecs=60)",
+      "description": "After insert, fire up to three Apify runs synchronously with a 60s wait; webhook handles late completions.",
+      "acceptanceCriteria": [
+        "Extend auth-signup-creator to call runTikTokProfile / runInstagramDetails / runInstagramPosts per the handles supplied",
+        "Use Promise.allSettled — partial failure is acceptable (some metrics are better than none)",
+        "Within waitSecs the response includes a `metrics_status: { tiktok, ig_details, ig_posts }` map of statuses",
+        "Test against a real signup with a known live TikTok/IG handle and confirm metric_snapshots rows appear within 60s",
+        "Commit"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Edge function: metrics-refresh with 6h throttle",
+      "description": "POST /metrics/refresh body { platform: 'tiktok'|'instagram' } — kicks scrapes if last refresh >6h ago.",
+      "acceptanceCriteria": [
+        "supabase/functions/metrics-refresh/index.ts: requires JWT; reads (user_id, platform) from body+claims",
+        "Checks the latest metric_snapshots.created_at for that pair; if <6h, returns 429 with { retry_after_seconds }",
+        "Otherwise kicks the appropriate Apify run(s)",
+        "Test: two back-to-back calls — second returns 429",
+        "Commit"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Design tokens module (colors, spacing, radii, shadows)",
+      "description": "Per docs/design.md §3 — single source of truth for visual tokens.",
+      "acceptanceCriteria": [
+        "src/design/tokens.ts exports: colors (full palette including pink #EC4899, orange #F97316, ink, canvas #FFF9F2, semantic statuses + soft-bg variants), spacing (4/8/12/16/20/24/32/48), radii (12 card, 999 pill, 4 input), shadows (hard 2px ink offset)",
+        "Unit type test (compile-time): typed const objects with `as const`",
+        "tsc passes",
+        "Commit"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Typography setup (Clash Display, Satoshi, JetBrains Mono)",
+      "description": "Load custom fonts via expo-font; expose typed text style presets.",
+      "acceptanceCriteria": [
+        "Fonts loaded via expo-font in app root; splash held until loaded",
+        "src/design/typography.ts exports textStyles: display, h1, h2, body, caption, mono — each with fontFamily, fontSize, lineHeight from docs/design.md",
+        "If font assets are not committed, use the Expo Google Fonts equivalent for Clash/Satoshi (or fall back to Inter + JetBrains Mono) and add a `Spec gap:` note flagging the asset substitution",
+        "Commit"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Motion presets + useReducedMotion wrapper",
+      "description": "Three spring presets (soft/snappy/bouncy) + a hook that respects OS reduced-motion.",
+      "acceptanceCriteria": [
+        "src/design/motion.ts exports SPRING_SOFT/SPRING_SNAPPY/SPRING_BOUNCY config objects per docs/design.md §6",
+        "src/design/useReducedMotion.ts hook wraps AccessibilityInfo and returns boolean",
+        "Helper `withReducedMotion(animation, reduced)` returns a no-op animation when reduced=true",
+        "Commit"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Primitive: ButtonPrimary + ButtonSecondary",
+      "description": "Press-collapse shadow per docs/design.md.",
+      "acceptanceCriteria": [
+        "src/components/primitives/Button.tsx exports ButtonPrimary, ButtonSecondary",
+        "Variants render the orange CTA (primary) and ink-bordered secondary",
+        "Press-in collapses the 2px hard shadow via Reanimated worklet (snappy spring); haptic on press",
+        "Disabled state grays out and disables haptic",
+        "Mobile-mcp verification: render a screen showing both buttons, tap each, screenshot the press state",
+        "Commit"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Primitive: Chip + StatusPill",
+      "description": "Pill-shaped chips for filters and status badges with the four semantic colors.",
+      "acceptanceCriteria": [
+        "src/components/primitives/Chip.tsx + StatusPill.tsx",
+        "Chip is interactive (selectable); StatusPill is read-only with semantic color from prop",
+        "Mobile-mcp verification: render screen with all four status pills + chips in selected/unselected, screenshot",
+        "Commit"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Primitive: CampaignCard + SkeletonCard",
+      "description": "The hero card used on the discover feed.",
+      "acceptanceCriteria": [
+        "src/components/primitives/CampaignCard.tsx renders title, lister handle, price (display-only), pre-condition summary, status pill",
+        "Press-collapse shadow on tap",
+        "SkeletonCard with shimmer (Reanimated worklet) for loading state",
+        "Mobile-mcp verification: screen with two cards + one skeleton, screenshot",
+        "Commit"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Primitive: BottomSheet + Toast",
+      "description": "Sheet for filters/forms; toast for success/error transient feedback.",
+      "acceptanceCriteria": [
+        "src/components/primitives/BottomSheet.tsx — gesture-driven dismissal, snap points, scrim",
+        "src/components/primitives/Toast.tsx — global toast provider in app root, success/error/info variants, auto-dismiss with progress bar",
+        "Mobile-mcp verification: open sheet, dismiss via drag, fire toast — screenshot each",
+        "Commit"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Storybook-style preview screen for primitives",
+      "description": "Single-screen catalog of all primitives for QA and future iterations.",
+      "acceptanceCriteria": [
+        "src/screens/_dev/PrimitivesPreview.tsx renders every primitive with realistic props",
+        "Reachable via expo-router at /_dev/primitives (only registered in __DEV__)",
+        "Mobile-mcp verification: navigate to the route, screenshot",
+        "Commit"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Supabase client + auth context (JWT in MMKV)",
+      "description": "Wire the typed Supabase client and an auth context that persists JWT in MMKV.",
+      "acceptanceCriteria": [
+        "src/lib/supabase.ts exports a typed createClient() using src/types/supabase.ts; reads SUPABASE_URL + SUPABASE_ANON_KEY from expo-constants",
+        "Custom Authorization header injected from MMKV-stored JWT; refresh on auth context change",
+        "src/lib/auth.tsx provides AuthProvider + useAuth() with { user, role, signIn(token, user), signOut() }",
+        "JWT stored under MMKV key 'marketify.jwt'",
+        "Commit"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "Role-based router (creator vs lister tabs)",
+      "description": "Expo-router stack with role-aware tab layouts per docs/design.md §6.",
+      "acceptanceCriteria": [
+        "app/_layout.tsx wraps with AuthProvider + ToastProvider + GestureHandlerRootView",
+        "Unauthed users see (auth) group; creators see (creator) tab group with Discover/Applied/Submitted/Profile; listers see (lister) tab group with Home/Campaigns/Inbox/Profile + a FAB hook",
+        "All tab labels + lucide icons per docs/design.md",
+        "Mobile-mcp verification: launch unauthed → see auth screen; manually call signIn() with a creator token via dev menu → tabs switch; same for lister",
+        "Commit"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "Onboarding role-picker screen",
+      "description": "Initial screen letting users pick creator or lister.",
+      "acceptanceCriteria": [
+        "app/(auth)/index.tsx renders the role picker per docs/design.md (two large pressables, ink borders, hard shadows)",
+        "Tap routes to /(auth)/signup/creator or /(auth)/signup/lister",
+        "Mobile-mcp verification: launch fresh app, screenshot, tap each, confirm navigation",
+        "Commit"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-033",
+      "title": "Lister signup screen",
+      "description": "Username + email + org name → calls auth-signup-lister edge function.",
+      "acceptanceCriteria": [
+        "app/(auth)/signup/lister.tsx — three TextInput fields with inline validation",
+        "Submit calls supabase.functions.invoke('auth-signup-lister'); on success, signIn() then router.replace('/(lister)') and toast 'Welcome'",
+        "On 409 conflict: show inline error on the conflicting field",
+        "Mobile-mcp verification: complete signup with a fresh username, screenshot success state",
+        "Commit"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-034",
+      "title": "Creator signup screen with handle inputs",
+      "description": "Username + tiktok_handle and/or instagram_handle.",
+      "acceptanceCriteria": [
+        "app/(auth)/signup/creator.tsx with handle fields rendered in JetBrains Mono",
+        "Validates at least one handle is supplied",
+        "Submit calls auth-signup-creator; loading state shows 'Pulling your stats…' with skeleton metrics for up to 60s",
+        "On success: signIn() then router.replace('/(creator)') and toast",
+        "Mobile-mcp verification: signup with a real handle, screenshot the loading + landed states",
+        "Commit"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-035",
+      "title": "Creator profile screen — handles + metrics + add/unlink",
+      "description": "Shows linked handles + denormalized metrics, supports adding/removing handles.",
+      "acceptanceCriteria": [
+        "app/(creator)/profile.tsx queries creator_profiles + social_links",
+        "Renders TikTok + IG sections with monospace handles, follower counts, avg views, last_refreshed_at relative time",
+        "Add Handle / Unlink Handle actions wired to a small edge function `manage-social-link` (create that function as part of this story)",
+        "'Stale' chip appears when metrics_stale_at is non-null",
+        "Mobile-mcp verification: navigate to profile, screenshot",
+        "Commit"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-036",
+      "title": "Pull-to-refresh metrics on creator profile (6h throttle)",
+      "description": "Drag-to-refresh per platform calls metrics-refresh edge function.",
+      "acceptanceCriteria": [
+        "Each platform card has its own pull-to-refresh; on release calls metrics-refresh for that platform",
+        "On 429: show toast 'Try again in Xh Ym'",
+        "On success: optimistic last_refreshed_at update; subscribe to metric_snapshots realtime to update numbers when webhook lands",
+        "Mobile-mcp verification: drag, observe loading, screenshot",
+        "Commit"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-037",
+      "title": "Lister profile screen",
+      "description": "Org name, email, sign-out.",
+      "acceptanceCriteria": [
+        "app/(lister)/profile.tsx renders lister_profiles fields + sign-out button",
+        "Sign-out clears MMKV and routes to (auth)",
+        "Mobile-mcp verification: screenshot, tap sign-out, screenshot",
+        "Commit"
+      ],
+      "priority": 37,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-038",
+      "title": "Discover feed screen with eligibility filter toggle",
+      "description": "Direct PostgREST query with the cache columns; client-side fine-grained eligibility for the rest.",
+      "acceptanceCriteria": [
+        "app/(creator)/discover.tsx queries listings WHERE status='active' AND min_followers_tiktok <= creator.tiktok_follower_count (and IG equivalent) when 'Eligible only' toggle is on (default on)",
+        "Renders CampaignCard list; pull-to-refresh; SkeletonCard while loading",
+        "Toggle in header switches eligibility filter, persisted in MMKV",
+        "Empty state per docs/design.md when zero results",
+        "Mobile-mcp verification: load feed (seeded data), toggle filter, screenshot both states",
+        "Commit"
+      ],
+      "priority": 38,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-039",
+      "title": "Edge function: get-listing-detail",
+      "description": "Returns listing + conditions + live eligibility for the calling creator.",
+      "acceptanceCriteria": [
+        "supabase/functions/get-listing-detail/index.ts: GET (or POST per Supabase func conventions) with listing_id; requires creator JWT",
+        "Returns { listing, pre_conditions, post_conditions, sample_videos, eligibility: { eligible: boolean, reasons: string[] } }",
+        "Eligibility engine logic per docs/tech-architecture.md (eligibility section)",
+        "Test: seeded eligible creator → eligible:true; force-fail one threshold → eligible:false with reason",
+        "Commit"
+      ],
+      "priority": 39,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-040",
+      "title": "Campaign detail screen + eligibility evaluation",
+      "description": "Tap a card → full detail with apply CTA gated on eligibility.",
+      "acceptanceCriteria": [
+        "app/(creator)/listing/[id].tsx fetches via get-listing-detail",
+        "Renders title, description, price (display-only), pre/post conditions, sample videos as TikTok/IG links",
+        "If eligible: ButtonPrimary 'Apply'; if not: greyed CTA with bullet list of failed reasons",
+        "Mobile-mcp verification: open eligible + ineligible listings (seed both), screenshot each",
+        "Commit"
+      ],
+      "priority": 40,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-041",
+      "title": "Edge function: apply-to-listing (server-side re-check)",
+      "description": "Re-evaluates eligibility, then inserts an applications row.",
+      "acceptanceCriteria": [
+        "supabase/functions/apply-to-listing/index.ts: POST { listing_id, pitch? } → 200 { application_id } or 422 { reasons }",
+        "Re-runs eligibility engine; rejects if not eligible",
+        "Inserts applications row in status=pending, links to listing's current version",
+        "Test passes",
+        "Commit"
+      ],
+      "priority": 41,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-042",
+      "title": "Apply modal on campaign detail",
+      "description": "Bottom sheet with optional pitch field → calls apply-to-listing.",
+      "acceptanceCriteria": [
+        "Tapping Apply opens BottomSheet with pitch TextInput (optional, 280 char limit) and submit",
+        "On 200: toast success + close sheet + navigate to (creator)/applied tab",
+        "On 422: toast with first reason",
+        "Mobile-mcp verification: open sheet, submit, screenshot success",
+        "Commit"
+      ],
+      "priority": 42,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-043",
+      "title": "My Applications tab (creator)",
+      "description": "Lists creator's applications grouped by status.",
+      "acceptanceCriteria": [
+        "app/(creator)/applied.tsx queries applications joined to listings",
+        "Tabs/segments: Pending / Approved / Rejected / Cancelled",
+        "Each row: campaign title, lister handle, status pill, applied_at relative",
+        "Tap row → navigates to listing detail",
+        "Mobile-mcp verification: screenshot each segment with seeded data",
+        "Commit"
+      ],
+      "priority": 43,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-044",
+      "title": "Realtime subscription for application status changes (creator)",
+      "description": "Push status flips into the UI via Supabase Realtime.",
+      "acceptanceCriteria": [
+        "Subscribe to applications WHERE creator_user_id = me on the Applied tab",
+        "On UPDATE: optimistically move the row to the new segment; fire toast 'Your application was approved/rejected'",
+        "Mobile-mcp verification: from Supabase Studio (or via execute_sql) flip a seeded application to approved while the screen is open — confirm UI updates without manual refresh",
+        "Commit"
+      ],
+      "priority": 44,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-045",
+      "title": "Edge function: submit-video",
+      "description": "Creator pastes a video URL after approval; oEmbed validates ownership-ish + URL shape.",
+      "acceptanceCriteria": [
+        "supabase/functions/submit-video/index.ts: POST { application_id, video_url, post_condition_affirmations: { [pc_id]: boolean } }",
+        "Validates URL is a TikTok or IG post URL via regex per docs/tech-architecture.md",
+        "Calls TikTok/IG oEmbed (no auth required) to confirm the URL resolves and capture thumbnail + author handle (warn if author handle != creator's handle, but do not block)",
+        "Inserts submissions row in status=pending",
+        "All post_conditions must have an affirmation: true; otherwise 422",
+        "Test passes",
+        "Commit"
+      ],
+      "priority": 45,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-046",
+      "title": "Submission composer screen",
+      "description": "URL paste → oEmbed preview → post-condition checklist → submit.",
+      "acceptanceCriteria": [
+        "app/(creator)/submit/[applicationId].tsx with URL input (mono), live oEmbed preview (thumbnail + caption snippet), checklist for post-conditions",
+        "Submit button disabled until URL valid + all conditions checked",
+        "On success: toast + route to Submitted tab",
+        "Mobile-mcp verification: paste a real TikTok URL, screenshot preview + submission",
+        "Commit"
+      ],
+      "priority": 46,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-047",
+      "title": "My Submissions tab (creator)",
+      "description": "Pending / Approved / Rejected segments.",
+      "acceptanceCriteria": [
+        "app/(creator)/submitted.tsx mirrors the applied tab structure for submissions",
+        "Realtime subscription on submissions WHERE creator_user_id = me",
+        "Mobile-mcp verification: screenshot each segment",
+        "Commit"
+      ],
+      "priority": 47,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-048",
+      "title": "Lister Home/dashboard screen",
+      "description": "Quick stats + entry points.",
+      "acceptanceCriteria": [
+        "app/(lister)/index.tsx shows counts: active campaigns, pending applications across all campaigns, pending submissions across all campaigns",
+        "FAB on this screen routes to create-campaign wizard step 1",
+        "Mobile-mcp verification: screenshot",
+        "Commit"
+      ],
+      "priority": 48,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-049",
+      "title": "Create-campaign wizard step 1 — basics",
+      "description": "Title, description, price (display-only), currency.",
+      "acceptanceCriteria": [
+        "app/(lister)/create/step-1.tsx with title, description, price (number), currency (USD/EUR/GBP)",
+        "Stores draft in zustand or react-context wizard store + MMKV",
+        "Next button enabled when title + description present",
+        "Mobile-mcp verification: fill, navigate next, screenshot",
+        "Commit"
+      ],
+      "priority": 49,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-050",
+      "title": "Create-campaign wizard step 2 — pre-conditions",
+      "description": "Add/remove pre-condition rows (platform + metric + threshold).",
+      "acceptanceCriteria": [
+        "step-2 screen lets the lister add rows: platform (TikTok/IG), metric (followers, avg_views), operator (>=), threshold",
+        "Saves to wizard store",
+        "Mobile-mcp verification: add two rows, screenshot",
+        "Commit"
+      ],
+      "priority": 50,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-051",
+      "title": "Create-campaign wizard step 3 — post-conditions",
+      "description": "Free-text rules creators must self-affirm at submit time.",
+      "acceptanceCriteria": [
+        "step-3 screen: list of post-condition strings (add/remove)",
+        "Each gets an internal id (uuid) so submission affirmations can map to it",
+        "Mobile-mcp verification: add three, screenshot",
+        "Commit"
+      ],
+      "priority": 51,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-052",
+      "title": "Create-campaign wizard step 4 — samples + max submissions",
+      "description": "Sample video URLs (TikTok/IG only — no upload) + max_submissions integer.",
+      "acceptanceCriteria": [
+        "step-4 screen: add/remove sample URLs (validated regex), max_submissions number input",
+        "Mobile-mcp verification: add two URLs, set max=10, screenshot",
+        "Commit"
+      ],
+      "priority": 52,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-053",
+      "title": "Create-campaign wizard step 5 — review + publish",
+      "description": "Show creator-side preview (using CampaignCard + detail layout) and Publish CTA.",
+      "acceptanceCriteria": [
+        "step-5 renders the listing as a creator would see it",
+        "Publish button calls a new edge function `create-listing` (write that function as part of this story) which inserts listings + listing_pre_conditions + listing_post_conditions in a single transaction and bumps the cache columns",
+        "On success: clear MMKV draft, toast, route to (lister)/campaigns",
+        "Mobile-mcp verification: end-to-end create flow, screenshot the published listing in the lister's My Campaigns",
+        "Commit"
+      ],
+      "priority": 53,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-054",
+      "title": "My Campaigns screen (lister)",
+      "description": "Active vs Inactive segments.",
+      "acceptanceCriteria": [
+        "app/(lister)/campaigns.tsx queries listings WHERE lister_user_id = me",
+        "Two segments: Active / Inactive (status)",
+        "Each row uses CampaignCard with extra meta (applications count, submissions count)",
+        "Mobile-mcp verification: screenshot",
+        "Commit"
+      ],
+      "priority": 54,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-055",
+      "title": "Edit campaign + cascade-cancel confirmation modal",
+      "description": "Editing versioned fields shows the cascade impact before saving.",
+      "acceptanceCriteria": [
+        "Tap a campaign on My Campaigns → edit screen pre-filled",
+        "Before saving versioned fields, query count of pending applications via execute_sql (or a small RPC) and show modal: 'This will cancel N pending applications. Continue?'",
+        "On confirm: PATCH listing — the DB trigger handles the cascade",
+        "Mobile-mcp verification: edit a seeded listing's price, see the modal with the seeded application count, confirm, then verify in My Applications that the cascade fired",
+        "Commit"
+      ],
+      "priority": 55,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-056",
+      "title": "Lister Inbox: Applications tab",
+      "description": "Pending/Approved/Rejected applications across all owned campaigns, with creator metrics surfaced.",
+      "acceptanceCriteria": [
+        "app/(lister)/inbox/applications.tsx queries applications joined to listings + creator_profiles",
+        "Each row shows creator handles (mono), TikTok followers, IG followers + avg views, application pitch preview",
+        "Realtime subscription for inserts",
+        "Mobile-mcp verification: screenshot",
+        "Commit"
+      ],
+      "priority": 56,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-057",
+      "title": "Application review with eligibility re-check + override dialog",
+      "description": "Approve re-evaluates eligibility against current creator metrics; if drifted, show OverrideEligibilityDialog.",
+      "acceptanceCriteria": [
+        "Tap a pending application → review sheet with creator metrics + pitch",
+        "Approve button triggers a new edge function `decide-application` (write it now): re-runs eligibility, returns { ok: true } or { ok: false, drift: string[] } so the UI can render the override dialog",
+        "Override confirms with second tap → application becomes approved regardless",
+        "Reject button + reason field",
+        "Mobile-mcp verification: approve a seeded application, then approve one with drifted metrics (manually update the creator_profiles to drop a count) — screenshot both flows",
+        "Commit"
+      ],
+      "priority": 57,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-058",
+      "title": "Lister Inbox: Submissions tab",
+      "description": "Pending submissions across all owned campaigns.",
+      "acceptanceCriteria": [
+        "app/(lister)/inbox/submissions.tsx queries submissions joined to applications + listings",
+        "Realtime subscription",
+        "ReuseBadge: when video_url appears in N>1 submissions, show 'also submitted to N other campaigns'",
+        "Mobile-mcp verification: screenshot",
+        "Commit"
+      ],
+      "priority": 58,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-059",
+      "title": "Submission review screen — embedded video + checklist",
+      "description": "Lister reviews the submitted URL with embedded WebView and checks each post-condition.",
+      "acceptanceCriteria": [
+        "app/(lister)/inbox/submissions/[id].tsx with WebView embedding the TikTok/IG URL (oEmbed embed URL)",
+        "Checklist of the listing's post-conditions (read-only at this stage; lister mentally verifies + ticks)",
+        "Approve / Reject + feedback text",
+        "Decision via edge function `decide-submission` (write as part of this story) which updates submissions and inserts a notification for the creator",
+        "Mobile-mcp verification: screenshot review state, approve, screenshot success animation",
+        "Commit"
+      ],
+      "priority": 59,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-060",
+      "title": "Approval / rejection animations (celebration + shake)",
+      "description": "Wire the celebration burst on approval and shake on rejection per docs/design.md §6.",
+      "acceptanceCriteria": [
+        "src/components/effects/CelebrationBurst.tsx + ShakeOnError.tsx using Reanimated worklets",
+        "Triggered on creator side when an application or submission flips to approved/rejected (Realtime push)",
+        "Respects useReducedMotion",
+        "Mobile-mcp verification: trigger an approval via execute_sql while the creator screen is open — record screenshots of celebration",
+        "Commit"
+      ],
+      "priority": 60,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-061",
+      "title": "In-app notifications inbox + bell badge",
+      "description": "Notifications tab + a bell badge visible on every screen header.",
+      "acceptanceCriteria": [
+        "app/(creator)/notifications.tsx and app/(lister)/notifications.tsx (or shared component) list notifications rows with unread first",
+        "Bell badge in shared header counts unread; tap routes to inbox",
+        "Tap notification marks read + deep-links to the relevant entity (application/submission/listing)",
+        "Realtime subscription on notifications WHERE recipient_user_id = me",
+        "Mobile-mcp verification: trigger a few notifications via execute_sql, see badge count tick, tap, screenshot",
+        "Commit"
+      ],
+      "priority": 61,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-062",
+      "title": "Empty states for every list screen",
+      "description": "Per docs/design.md — illustrated empty states with CTA where applicable.",
+      "acceptanceCriteria": [
+        "src/components/shared/EmptyState.tsx with title, body, optional CTA",
+        "Wired into Discover, Applied, Submitted, Campaigns, Inbox sub-tabs, Notifications",
+        "Mobile-mcp verification: sign in as a fresh user with no data, screenshot each empty state",
+        "Commit"
+      ],
+      "priority": 62,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-063",
+      "title": "Error states + retry on every screen",
+      "description": "Network errors should never strand the user.",
+      "acceptanceCriteria": [
+        "src/components/shared/ErrorState.tsx with title, body, Retry button",
+        "All edge function callers wrap fetch with try/catch and surface an ErrorState in the loading slot when failed",
+        "Toast on transient errors (e.g. 429, 5xx)",
+        "Mobile-mcp verification: kill connectivity (Airplane mode in simulator), pull-to-refresh discover, screenshot error state, restore connectivity, retry, screenshot success",
+        "Commit"
+      ],
+      "priority": 63,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-064",
+      "title": "Reduced-motion audit",
+      "description": "Verify every animated component honors useReducedMotion.",
+      "acceptanceCriteria": [
+        "Grep for `useSharedValue` / `withSpring` / `withTiming` and confirm each touchpoint either uses withReducedMotion helper or short-circuits when reduced",
+        "Toggle Reduce Motion in the iOS simulator (Settings → Accessibility) and verify CelebrationBurst, ShakeOnError, button press animations no-op",
+        "Mobile-mcp verification: screenshot interactions with reduced motion enabled — confirm static visuals",
+        "Append findings + any fixes to progress.txt",
+        "Commit"
+      ],
+      "priority": 64,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-065",
+      "title": "ReuseBadge surfaced on lister submission rows",
+      "description": "Already wired in US-058; this story adds polish + tap behavior.",
+      "acceptanceCriteria": [
+        "Tap the badge opens a sheet listing the other campaigns this URL was submitted to (titles only)",
+        "Mobile-mcp verification: with a seeded duplicate-URL submission, tap the badge, screenshot the sheet",
+        "Commit"
+      ],
+      "priority": 65,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

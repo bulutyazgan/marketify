@@ -1,0 +1,23 @@
+# Ralph Progress Log — Marketify
+Started: (will be replaced on first run)
+---
+
+## Codebase Patterns
+*Append-only consolidated learnings. Each future iteration reads this BEFORE doing anything.*
+
+- **Authoritative specs are `docs/product-plan.md`, `docs/design.md`, `docs/tech-architecture.md`.** When the story is ambiguous, read the relevant section there. Do not invent product behavior.
+- **Use Supabase MCP, not the supabase CLI**, for migrations, queries, edge functions, and type generation. Migrations are append-only and named `us_NNN_description`.
+- **Use mobile-mcp for any UI verification.** Never claim a UI story is done without a screenshot from `mobile_take_screenshot`.
+- **Use the `feature-dev:code-reviewer` subagent before every commit.** It catches drift across iterations that you can't see in your fresh context.
+- **Delegate exploration.** If a story would have you read >3 files, spawn the `Explore` subagent first and work from its summary.
+- **Always regenerate `src/types/supabase.ts`** after any schema migration. Commit the regenerated file in the same commit as the migration.
+- **Use `bun`, not npm/yarn/pnpm.** It is what's installed locally.
+- **JWT secret is `MARKETIFY_JWT_SECRET`**, separate from Supabase's built-in JWT secret. We sign our own per docs/product-plan.md §2.
+- **Apify key is `APIFY_KEY`** in `.env`. Read via `process.env.APIFY_KEY` or `Deno.env.get("APIFY_KEY")`. Never paste into source.
+- **Edge functions live in `supabase/functions/<name>/index.ts`** with shared utils under `supabase/functions/_shared/`.
+- **Component organization:** primitives in `src/components/primitives/`, screen-specific in `src/screens/<screen>/`, shared composites in `src/components/shared/`.
+- **No emoji in product UI** — Lucide icons only (per docs/design.md).
+- **One role per account in v1** — no dual-role logic.
+- **Run `get_advisors({type:'security'})` after every RLS or schema change.** Address every error-level finding before commit.
+
+---

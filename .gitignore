@@ -1,3 +1,20 @@
 .env
 .env.local
 
+# Node / Expo (US-001 will also generate Expo defaults; keep these explicit)
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.log
+
+# macOS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Ralph runtime
+scripts/ralph/.last-branch
+scripts/ralph/archive/
+scripts/ralph/ralph.log
