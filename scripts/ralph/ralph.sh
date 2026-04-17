@@ -93,9 +93,16 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   else
     # Claude Code: stream-json output format emits NDJSON (one event per tool_use / message / result).
     # We pipe it through jq to produce human-readable lines ([TOOL], [TXT], [RES], [DONE]) that land
-    # in $ITER_OUT and stream to ralph.log via tail -F. Watchdog kills the worker if mobile-mcp or
-    # other MCP children wedge the loop past MAX_ITER_SECONDS.
-    MAX_ITER_SECONDS=${MAX_ITER_SECONDS:-2700}
+    # in $ITER_OUT and stream to ralph.log via tail -F.
+    #
+    # Watchdog strategy (two-tier, progress-aware):
+    #   IDLE  : kill the worker if no NDJSON has been written to $ITER_OUT for MAX_IDLE_SECONDS.
+    #           This is the real failure mode — MCP stdio deadlock where the worker goes silent.
+    #           A working iter resets the idle clock on every tool call.
+    #   TOTAL : hard ceiling in case the worker is "alive but pathological" (tight tool-call loop
+    #           with no meaningful progress). Generous — only trips on clearly broken runs.
+    MAX_IDLE_SECONDS=${MAX_IDLE_SECONDS:-900}     # 15 min of silence = stuck
+    MAX_TOTAL_SECONDS=${MAX_TOTAL_SECONDS:-7200}  # 2 hour hard ceiling
     ITER_OUT=$(mktemp -t ralph-iter) || ITER_OUT="/tmp/ralph-iter-$$"
     RAW_OUT=$(mktemp -t ralph-raw)  || RAW_OUT="/tmp/ralph-raw-$$"
     : > "$ITER_OUT" ; : > "$RAW_OUT"
@@ -139,7 +146,28 @@ else empty end
       < "$SCRIPT_DIR/CLAUDE.md" > "$RAW_OUT" 2>> "$ITER_OUT" &
     CLAUDE_PID=$!
 
-    ( sleep "$MAX_ITER_SECONDS"; kill -TERM "$CLAUDE_PID" 2>/dev/null; sleep 10; kill -KILL "$CLAUDE_PID" 2>/dev/null ) &
+    # Inactivity watchdog — poll $ITER_OUT mtime every 30s. If the worker hasn't
+    # emitted any NDJSON for $MAX_IDLE_SECONDS, assume MCP deadlock and terminate.
+    # A productive iter (tool calls streaming in) continuously resets the clock.
+    (
+      while kill -0 "$CLAUDE_PID" 2>/dev/null; do
+        sleep 30
+        now=$(date +%s)
+        mtime=$(stat -f %m "$ITER_OUT" 2>/dev/null || stat -c %Y "$ITER_OUT" 2>/dev/null || echo "$now")
+        idle=$(( now - mtime ))
+        if [ "$idle" -gt "$MAX_IDLE_SECONDS" ]; then
+          echo "[WATCHDOG] No output for ${idle}s (> ${MAX_IDLE_SECONDS}s) — killing worker" >> "$ITER_OUT"
+          kill -TERM "$CLAUDE_PID" 2>/dev/null
+          sleep 10
+          kill -KILL "$CLAUDE_PID" 2>/dev/null
+          exit 0
+        fi
+      done
+    ) &
+    IDLE_PID=$!
+
+    # Total-time ceiling — safety net for "alive but looping forever" pathologies.
+    ( sleep "$MAX_TOTAL_SECONDS"; kill -TERM "$CLAUDE_PID" 2>/dev/null; sleep 10; kill -KILL "$CLAUDE_PID" 2>/dev/null ) &
     WATCHDOG_PID=$!
 
     wait "$CLAUDE_PID" 2>/dev/null || true
@@ -151,6 +179,7 @@ else empty end
     wait "$JQ_PIPE_PID" 2>/dev/null || true
 
     kill "$TAIL_PID"     2>/dev/null || true; wait "$TAIL_PID"     2>/dev/null || true
+    kill "$IDLE_PID"     2>/dev/null || true; wait "$IDLE_PID"     2>/dev/null || true
     kill "$WATCHDOG_PID" 2>/dev/null || true; wait "$WATCHDOG_PID" 2>/dev/null || true
 
     OUTPUT=$(cat "$ITER_OUT" 2>/dev/null || true)
