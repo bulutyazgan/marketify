@@ -319,8 +319,8 @@
         "Commit"
       ],
       "priority": 21,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Followed spec §5.2 over AC: body is {social_link_id}, throttle keyed on social_links.last_scrape_attempt_at (atomic CAS to close TOCTOU), responses include status:'queued'|'already_fresh', errors 429 RATE_LIMIT + 502 APIFY_ERROR. snapshot_ids returned on already_fresh; empty on queued until webhook RPCs UPSERT (spec gap documented in header)."
     },
     {
       "id": "US-022",
