@@ -1,18 +1,59 @@
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ButtonPrimary, ButtonSecondary } from '@/components/primitives/Button';
+import { Chip } from '@/components/primitives/Chip';
+import { StatusPill } from '@/components/primitives/StatusPill';
 import { colors, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 
 export default function Index() {
+  const [eligibleOnly, setEligibleOnly] = useState(true);
+  const [platform, setPlatform] = useState(false);
+  const [price, setPrice] = useState(false);
+
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={[textStyles.display, styles.title]}>Marketify</Text>
-      <View style={styles.stack}>
-        <ButtonPrimary label="Primary CTA" onPress={() => {}} testID="btn-primary" />
-        <ButtonSecondary label="Secondary" onPress={() => {}} testID="btn-secondary" />
-        <ButtonPrimary label="Disabled" onPress={() => {}} disabled testID="btn-disabled" />
-        <ButtonPrimary label="Loading" onPress={() => {}} loading testID="btn-loading" />
-      </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={[textStyles.display, styles.title]}>Marketify</Text>
+
+        <View style={styles.stack}>
+          <ButtonPrimary label="Primary CTA" onPress={() => {}} testID="btn-primary" />
+          <ButtonSecondary label="Secondary" onPress={() => {}} testID="btn-secondary" />
+          <ButtonPrimary label="Disabled" onPress={() => {}} disabled testID="btn-disabled" />
+          <ButtonPrimary label="Loading" onPress={() => {}} loading testID="btn-loading" />
+        </View>
+
+        <Text style={[textStyles.h2, styles.sectionHeader]}>Chips</Text>
+        <View style={styles.chipRow}>
+          <Chip
+            label="Eligible only"
+            active={eligibleOnly}
+            onPress={() => setEligibleOnly((v) => !v)}
+            testID="chip-eligible"
+          />
+          <Chip
+            label="Platform"
+            active={platform}
+            onPress={() => setPlatform((v) => !v)}
+            testID="chip-platform"
+          />
+          <Chip
+            label="Price"
+            active={price}
+            onPress={() => setPrice((v) => !v)}
+            testID="chip-price"
+          />
+          <Chip label="Disabled" active={false} disabled testID="chip-disabled" />
+        </View>
+
+        <Text style={[textStyles.h2, styles.sectionHeader]}>Status pills</Text>
+        <View style={styles.pillRow}>
+          <StatusPill status="pending" testID="pill-pending" />
+          <StatusPill status="approved" testID="pill-approved" />
+          <StatusPill status="rejected" testID="pill-rejected" />
+          <StatusPill status="cancelled" testID="pill-cancelled" />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -20,17 +61,36 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: colors.canvas,
+  },
+  scroll: {
     paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
+    alignItems: 'stretch',
   },
   title: {
     color: colors.ink,
     marginBottom: spacing.xxl,
+    alignSelf: 'center',
   },
   stack: {
     alignSelf: 'stretch',
     gap: spacing.base,
+  },
+  sectionHeader: {
+    color: colors.ink,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.base,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    alignItems: 'center',
   },
 });

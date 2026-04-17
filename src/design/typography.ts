@@ -72,6 +72,15 @@ export const textStyles = {
     fontSize: 14,
     lineHeight: 20,
   },
+  // Micro (pills + chip labels) per §1.3 — Rubik_700Bold stands in for Satoshi 700,
+  // 0.08em tracking at 11pt = 0.88pt (RN letterSpacing is absolute points).
+  micro: {
+    fontFamily: fontFamilies.bodyBold,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.88,
+    textTransform: 'uppercase',
+  },
 } as const satisfies Record<string, TextStyle>;
 
 export type TextStyleToken = keyof typeof textStyles;

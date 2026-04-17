@@ -391,8 +391,8 @@
         "Commit"
       ],
       "priority": 26,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Spec gap: component inventory (§7 line 725) lists `variant` as a Chip prop but the design doesn't define variant values for v1. Deferred (same precedent as US-025 ButtonPrimary variant). Spec gap: StatusPill `animateTo(newStatus)` worklet from §7 line 715 is deferred to US-060 (approval/rejection animations) — this story's AC is 'read-only with semantic color'. Added `textStyles.micro` preset to `src/design/typography.ts` (Rubik_700Bold 11pt, lineHeight 14, letterSpacing 0.88, uppercase) — US-023 AC only enumerated 6 keys so micro was deferred; this story was the first caller, so added it now. Code-reviewer caught four medium issues fixed before commit: (1) Chip was missing the neubrutalist hard shadow + press-collapse; (2) StatusPill was missing the hard shadow — both violated §1.5 ('Borders are 2px solid ink on every card, button, input, chip' + hard shadow universal); (3) Chip a11y role was 'button' with `selected` which screen readers ignore → switched to 'checkbox' with `checked`; (4) StatusPill's `accessibilityRole='text'` on a View is an invalid RN role → removed, kept only `accessible + accessibilityLabel`."
     },
     {
       "id": "US-027",
