@@ -196,7 +196,7 @@
         "Commit"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
