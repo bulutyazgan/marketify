@@ -1,33 +1,13 @@
 import { Redirect } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/design/tokens';
-import { textStyles } from '@/design/typography';
+import { useAuth } from '@/lib/auth';
 
+// Role-aware landing. `useAuth()` reads the role that `AuthProvider` hydrated
+// from SecureStore at root-layout time (US-030). The dev primitives catalog
+// (US-029) remains directly reachable at `/primitives` for mobile-mcp
+// verification; we only gate `/` itself.
 export default function Index() {
-  if (__DEV__) {
-    return <Redirect href="/(dev)/primitives" />;
-  }
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={[textStyles.display, styles.title]}>Marketify</Text>
-      </View>
-    </SafeAreaView>
-  );
+  const { role } = useAuth();
+  if (role === 'creator') return <Redirect href="/(creator)/feed" />;
+  if (role === 'lister') return <Redirect href="/(lister)/dashboard" />;
+  return <Redirect href="/(auth)" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas,
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    color: colors.ink,
-  },
-});
