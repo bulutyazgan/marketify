@@ -19,5 +19,20 @@ Started: (will be replaced on first run)
 - **No emoji in product UI** — Lucide icons only (per docs/design.md).
 - **One role per account in v1** — no dual-role logic.
 - **Run `get_advisors({type:'security'})` after every RLS or schema change.** Address every error-level finding before commit.
+- **`expo lint` default glob is `['src', 'app', 'components']`.** Empty subdirs with only `.gitkeep` cause eslint to exit 2 ("all files ignored"). Keep at least one lintable `.ts`/`.tsx` file in any of those roots (`src/index.ts` with `export {};` was used for US-001).
+- **Expo bootstrap workaround:** `create-expo-app .` refuses to run when the target dir has dotfiles/dirs it considers hostile. Bootstrap into a sibling folder (e.g. `.expo-init`), then move the generated files up. Preserves `.claude/`, `.env`, `docs/`, `scripts/`.
 
+---
+
+## 2026-04-17 07:38 — US-001
+- Bootstrapped Expo blank-typescript template at repo root; configured app.json (name/slug/scheme + ios.bundleIdentifier / android.package = com.marketify.app); tsconfig strict + `@/*` → `src/*`; added `typecheck` + `lint` scripts.
+- Created `src/{components,screens,lib,types}/` each with `.gitkeep`; added `src/index.ts` stub (`export {};`) to satisfy `expo lint`.
+- Files changed: `package.json`, `app.json`, `tsconfig.json`, `App.tsx`, `index.ts`, `eslint.config.js`, `.gitignore`, `assets/*`, `bun.lock`, `src/**`
+- Quality checks: tsc ✓ / lint ✓ / supabase advisors n/a / mobile-mcp n/a (no UI story yet — US-002 first boots simulator)
+- Code-reviewer verdict: approved (no medium+ issues)
+- **Learnings for future iterations:**
+  - `create-expo-app` refuses to run if target dir has visible files; bootstrap into `.expo-init/` and move files up
+  - `expo lint` scans `src|app|components` by default — keep at least one lintable file in any of those dirs or eslint errors "all files ignored"
+  - `expo/tsconfig.base` does NOT set `strict`; our own tsconfig adds it
+  - The initial `npx expo lint` auto-installs `eslint` + `eslint-config-expo` and auto-writes `eslint.config.js` — noted in package.json devDeps (intentional)
 ---

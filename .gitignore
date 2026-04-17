@@ -1,13 +1,40 @@
 .env
 .env.local
+.env*.local
 
-# Node / Expo (US-001 will also generate Expo defaults; keep these explicit)
+# Node / Expo
 node_modules/
 .expo/
 .expo-shared/
 dist/
 web-build/
+expo-env.d.ts
 *.log
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# generated native folders
+/ios
+/android
+
+# TypeScript
+*.tsbuildinfo
 
 # macOS / IDE
 .DS_Store
