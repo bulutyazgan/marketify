@@ -3,9 +3,15 @@
 // Usage: bun run scripts/test/auth-signup-creator.ts
 // Requires SUPABASE_URL and SUPABASE_ANON_KEY in .env (bun auto-loads).
 //
+// Note (US-020): the happy-path call dispatches real Apify runs against
+// the supplied handles. The handles used below are synthetic, so Apify
+// will return empty/failed results — but it still burns a small amount
+// of credits (~$0.08 per smoke run). If you need handle-level dataset
+// content, use scripts/test/auth-signup-creator-live.ts instead.
+//
 // Asserts:
 //   1. Fresh { username, tiktok_handle, instagram_handle } → 200 with
-//      { token, user_id, role:'creator' }
+//      { token, user_id, role:'creator', metrics_status:{tiktok, ig_details, ig_posts} }
 //   2. Same body → 409 USERNAME_TAKEN
 //   3. Fresh username + no handles → 422 HANDLE_REQUIRED
 //   4. Fresh username + missing body field → 400 INVALID_REQUEST
@@ -54,6 +60,43 @@ if (
 ) {
   console.error("unexpected 200 body shape");
   process.exit(1);
+}
+
+// US-020: metrics_status must exist as an object. When APIFY_KEY /
+// APIFY_WEBHOOK_SECRET are configured on the deployed function (the
+// expected prod + staging case) it should carry one entry per platform
+// dispatched — tiktok + ig_details + ig_posts for a dual-handle signup.
+// When those env vars are absent, the function logs a warn and returns
+// an empty object. We accept both shapes here, but require the keys to
+// be populated if any are present.
+const metricsStatus = first.data?.metrics_status;
+if (metricsStatus == null || typeof metricsStatus !== "object") {
+  console.error("metrics_status missing or not an object");
+  process.exit(1);
+}
+const statusValues = new Set(["fresh", "refreshing", "failed"]);
+for (const key of Object.keys(metricsStatus)) {
+  if (!["tiktok", "ig_details", "ig_posts"].includes(key)) {
+    console.error(`unexpected metrics_status key: ${key}`);
+    process.exit(1);
+  }
+  if (!statusValues.has(metricsStatus[key])) {
+    console.error(`unexpected metrics_status[${key}] value: ${metricsStatus[key]}`);
+    process.exit(1);
+  }
+}
+if (Object.keys(metricsStatus).length > 0) {
+  // If Apify was configured, all three keys should be present for a
+  // dual-handle signup.
+  for (const key of ["tiktok", "ig_details", "ig_posts"]) {
+    if (!(key in metricsStatus)) {
+      console.error(`metrics_status partially populated — missing ${key}`);
+      process.exit(1);
+    }
+  }
+  console.log("metrics_status ok:", metricsStatus);
+} else {
+  console.log("metrics_status empty — Apify not configured on deployed fn");
 }
 
 const second = await post(primary);

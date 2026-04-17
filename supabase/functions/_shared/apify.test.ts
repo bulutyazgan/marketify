@@ -218,3 +218,56 @@ Deno.test("rejects negative waitSecs", async () => {
     restore();
   }
 });
+
+Deno.test("serializes webhooks option as base64 JSON in query param", async () => {
+  setApifyKey("test-token");
+  const { captured, restore } = installFetchSpy(stubRunResponse());
+  try {
+    const webhooks = [
+      {
+        eventTypes: ["ACTOR.RUN.SUCCEEDED", "ACTOR.RUN.FAILED"],
+        requestUrl: "https://example.supabase.co/functions/v1/apify-webhook",
+        payloadTemplate: JSON.stringify({
+          social_link_id: "abc",
+          scrape_mode: "tiktok_profile",
+          run_id: "{{resource.id}}",
+        }),
+        headersTemplate: JSON.stringify({ "X-Apify-Webhook-Secret": "sek" }),
+        shouldInterpolateStrings: true,
+      },
+    ];
+    await runTikTokProfile("charlidamelio", { webhooks });
+
+    const url = new URL(captured[0].url);
+    const encoded = url.searchParams.get("webhooks");
+    if (!encoded) throw new Error("webhooks query param missing");
+    const decoded = JSON.parse(atob(encoded));
+    assertEquals(decoded, webhooks);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("omits webhooks query param when option is not provided", async () => {
+  setApifyKey("test-token");
+  const { captured, restore } = installFetchSpy(stubRunResponse());
+  try {
+    await runTikTokProfile("charlidamelio");
+    const url = new URL(captured[0].url);
+    assertEquals(url.searchParams.get("webhooks"), null);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("omits webhooks query param when option is empty array", async () => {
+  setApifyKey("test-token");
+  const { captured, restore } = installFetchSpy(stubRunResponse());
+  try {
+    await runTikTokProfile("charlidamelio", { webhooks: [] });
+    const url = new URL(captured[0].url);
+    assertEquals(url.searchParams.get("webhooks"), null);
+  } finally {
+    restore();
+  }
+});
