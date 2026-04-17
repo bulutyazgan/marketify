@@ -361,8 +361,8 @@
         "Commit"
       ],
       "priority": 24,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Spring presets live in docs/design.md §1.4 (not §6); values match canonical soft/snappy/bouncy. `withReducedMotion(config, reduced)` is a CONFIG augmenter (spreads `reduceMotion: ReduceMotion.Always` from Reanimated v4) rather than an animation-object wrapper — Reanimated collapses Always-flagged animations to instant snap, which satisfies the spec's no-op requirement. Hook uses a session-scoped module cache so subsequent mounts don't re-race the async AccessibilityInfo query."
     },
     {
       "id": "US-025",
