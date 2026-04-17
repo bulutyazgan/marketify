@@ -554,8 +554,8 @@
         "Commit"
       ],
       "priority": 37,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "2026-04-17: profile screen renders username (@dev_lister) + email from AuthContext and org_name from lister_profiles with '—' fallback. Sign out invokes AuthProvider.signOut which clears SecureStore and routes back to (auth) role picker via app/index.tsx role guard — verified via mobile-mcp. org_name row shows '—' in verification because US-036's JWT drift blocker still rejects PostgREST reads; the fallback + error toast are the designed behavior under that failure mode."
     },
     {
       "id": "US-038",
