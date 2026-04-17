@@ -835,6 +835,17 @@ export type Database = {
         Args: { p_submission_id: string }
         Returns: number
       }
+      submit_video_rpc: {
+        Args: {
+          p_application_id: string
+          p_creator_id: string
+          p_external_id?: string
+          p_oembed?: Json
+          p_platform: Database["public"]["Enums"]["platform"]
+          p_video_url: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       application_status:
