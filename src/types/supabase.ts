@@ -363,6 +363,68 @@ export type Database = {
           },
         ]
       }
+      metric_snapshots: {
+        Row: {
+          apify_run_id: string | null
+          avg_views_last_10: number | null
+          error_message: string | null
+          fetched_at: string
+          follower_count: number | null
+          following_count: number | null
+          id: string
+          is_latest: boolean
+          is_verified: boolean | null
+          raw_payload: Json | null
+          scrape_mode: Database["public"]["Enums"]["scrape_mode"]
+          social_link_id: string
+          status: Database["public"]["Enums"]["metric_status"]
+          total_likes: number | null
+          video_count: number | null
+        }
+        Insert: {
+          apify_run_id?: string | null
+          avg_views_last_10?: number | null
+          error_message?: string | null
+          fetched_at?: string
+          follower_count?: number | null
+          following_count?: number | null
+          id?: string
+          is_latest?: boolean
+          is_verified?: boolean | null
+          raw_payload?: Json | null
+          scrape_mode: Database["public"]["Enums"]["scrape_mode"]
+          social_link_id: string
+          status: Database["public"]["Enums"]["metric_status"]
+          total_likes?: number | null
+          video_count?: number | null
+        }
+        Update: {
+          apify_run_id?: string | null
+          avg_views_last_10?: number | null
+          error_message?: string | null
+          fetched_at?: string
+          follower_count?: number | null
+          following_count?: number | null
+          id?: string
+          is_latest?: boolean
+          is_verified?: boolean | null
+          raw_payload?: Json | null
+          scrape_mode?: Database["public"]["Enums"]["scrape_mode"]
+          social_link_id?: string
+          status?: Database["public"]["Enums"]["metric_status"]
+          total_likes?: number | null
+          video_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metric_snapshots_social_link_id_fkey"
+            columns: ["social_link_id"]
+            isOneToOne: false
+            referencedRelation: "social_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sample_videos: {
         Row: {
           caption: string | null
