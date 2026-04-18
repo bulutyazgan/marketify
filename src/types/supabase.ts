@@ -821,6 +821,19 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      list_discover_feed: {
+        Args: { p_eligible_only?: boolean }
+        Returns: {
+          created_at: string
+          currency: string
+          id: string
+          lister_handle: string
+          min_followers_instagram: number
+          min_followers_tiktok: number
+          price_cents: number
+          title: string
+        }[]
+      }
       list_my_applications: {
         Args: never
         Returns: {

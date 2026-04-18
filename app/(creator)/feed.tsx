@@ -1,79 +1,266 @@
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
-import { TabPlaceholder } from '@/components/shared/TabPlaceholder';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CampaignCard } from '@/components/primitives/CampaignCard';
+import { Chip } from '@/components/primitives/Chip';
+import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
+import { supabase } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
 
-// US-038 replaces the placeholder with the real Discover feed. Until it
-// lands, a __DEV__-only launcher surfaces the two seeded campaigns so
-// US-040's detail screen can be reached for mobile-mcp verification.
-// The dev block compiles out of prod bundles per Codebase Pattern #96
-// (all dev-only data lives inside the guarded component).
-export default function Feed() {
-  return (
-    <>
-      <TabPlaceholder
-        title="Discover"
-        subtitle="The eligibility-filtered campaign feed lands in US-038."
-      />
-      {__DEV__ ? <DevCampaignLauncher /> : null}
-    </>
-  );
+// US-038 — Creator Discover feed. Renders a header Chip toggle for
+// "Eligible only" plus a pull-to-refresh list of CampaignCards sourced from
+// the `list_discover_feed(p_eligible_only)` SECURITY DEFINER RPC (see the
+// us_038 migration for rationale — a plain PostgREST embed would silently
+// null lister_handle under the self-only users RLS policy).
+//
+// Persistence: the toggle state is stored in AsyncStorage under
+// FILTER_STORAGE_KEY (spec says MMKV but Codebase Pattern #91 rules MMKV
+// out under Expo Go; a non-secret boolean preference doesn't warrant the
+// SecureStore ceremony either, so AsyncStorage is the right fit).
+// Default is eligible_only=true per AC.
+//
+// Empty state per docs/design.md §5.5 — the "See all campaigns" action
+// flips the toggle off (which reloads) rather than routing elsewhere.
+
+type DiscoverRow = Database['public']['Functions']['list_discover_feed']['Returns'][number];
+
+const FILTER_STORAGE_KEY = 'marketify.discoverEligibleOnly';
+const HYDRATED_DEFAULT = true;
+
+function readCurrency(raw: string): 'USD' | 'EUR' | 'GBP' {
+  return raw === 'EUR' || raw === 'GBP' ? raw : 'USD';
 }
 
-function DevCampaignLauncher() {
-  const SAMPLES: { id: string; title: string; hint: string }[] = [
-    {
-      id: '11111111-1111-1111-1111-111111111010',
-      title: 'Promote Acme Headphones',
-      hint: 'Eligible for the seed creator',
-    },
-    {
-      id: '22222222-2222-2222-2222-222222222010',
-      title: 'Mega-Influencer Luxe Launch',
-      hint: 'Ineligible — high thresholds',
-    },
-  ];
+export default function Feed() {
+  // Toggle is hydrated async from AsyncStorage — until the read settles we
+  // render with the default and flip in place once storage returns. This
+  // matches the storage-hydration pattern from AuthProvider (Pattern #97).
+  const [eligibleOnly, setEligibleOnly] = useState<boolean>(HYDRATED_DEFAULT);
+  const [hydrated, setHydrated] = useState<boolean>(false);
+
+  const [rows, setRows] = useState<DiscoverRow[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Synchronous ref mirrors the latest toggle value so the `load` callback
+  // never stale-captures it (Pattern #106). React state still drives the UI.
+  const eligibleRef = useRef<boolean>(HYDRATED_DEFAULT);
+  // Monotonic counter so rapid toggle flips don't let a stale response
+  // overwrite fresh data — only the latest dispatch's rows hit state.
+  const loadSeqRef = useRef<number>(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    void AsyncStorage.getItem(FILTER_STORAGE_KEY).then((raw) => {
+      if (cancelled) return;
+      const next = raw === null ? HYDRATED_DEFAULT : raw === 'true';
+      eligibleRef.current = next;
+      setEligibleOnly(next);
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const load = useCallback(async (isRefresh: boolean) => {
+    const seq = ++loadSeqRef.current;
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+
+    const { data, error: rpcError } = await supabase.rpc('list_discover_feed', {
+      p_eligible_only: eligibleRef.current,
+    });
+    if (loadSeqRef.current !== seq) return;
+    if (rpcError) {
+      setError("Couldn't load campaigns.");
+      setRows([]);
+    } else {
+      setRows(data ?? []);
+    }
+    if (isRefresh) setRefreshing(false);
+    else setLoading(false);
+  }, []);
+
+  // Re-fetch whenever the toggle changes, but only after hydration — the
+  // first effect run will otherwise fire twice (once with the default,
+  // once with the hydrated value).
+  useEffect(() => {
+    if (!hydrated) return;
+    eligibleRef.current = eligibleOnly;
+    void load(false);
+  }, [eligibleOnly, hydrated, load]);
+
+  const onToggleEligible = useCallback(() => {
+    setEligibleOnly((prev) => {
+      const next = !prev;
+      void AsyncStorage.setItem(FILTER_STORAGE_KEY, next ? 'true' : 'false');
+      return next;
+    });
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    void load(true);
+  }, [load]);
+
+  const onCardPress = useCallback((id: string) => {
+    router.push(`/(creator)/listing/${id}`);
+  }, []);
+
   return (
-    <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[textStyles.micro, { color: colors.ink70 }]}>Dev sample campaigns</Text>
-        <View style={styles.list}>
-          {SAMPLES.map((s) => (
-            <Pressable
-              key={s.id}
-              style={[styles.card, shadows.hard]}
-              onPress={() => router.push(`/(creator)/listing/${s.id}`)}
-              accessibilityRole="button"
-              accessibilityLabel={`Open dev campaign: ${s.title}`}
-              testID={`dev-campaign-${s.id}`}
-            >
-              <Text style={[textStyles.h2, { color: colors.ink }]}>{s.title}</Text>
-              <Text style={[textStyles.caption, { color: colors.ink70 }]}>{s.hint}</Text>
-            </Pressable>
-          ))}
+    <SafeAreaView style={styles.root}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.ink} />
+        }
+      >
+        <Text style={[textStyles.display, styles.header]}>Discover</Text>
+
+        <View style={styles.filterRow}>
+          <Chip
+            label="Eligible only"
+            active={eligibleOnly}
+            onPress={onToggleEligible}
+            testID="chip-eligible-only"
+          />
         </View>
+
+        {loading ? (
+          <View style={styles.list} testID="discover-loading">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </View>
+        ) : error ? (
+          <View style={styles.emptyBox}>
+            <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
+          </View>
+        ) : rows.length === 0 ? (
+          <EmptyState
+            eligibleOnly={eligibleOnly}
+            onSeeAll={() => {
+              if (!eligibleOnly) return;
+              setEligibleOnly(false);
+              void AsyncStorage.setItem(FILTER_STORAGE_KEY, 'false');
+            }}
+          />
+        ) : (
+          <View style={styles.list} testID="discover-list">
+            {rows.map((r) => (
+              <CampaignCard
+                key={r.id}
+                title={r.title}
+                listerHandle={`@${r.lister_handle}`}
+                priceCents={r.price_cents}
+                currency={readCurrency(r.currency)}
+                onPress={() => onCardPress(r.id)}
+                testID={`campaign-card-${r.id}`}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// Empty state per docs/design.md §5.5. Two action cards: "Refresh your
+// metrics" routes to Profile (which has its own refresh affordance from
+// US-036); "See all campaigns" flips the eligibility toggle off in place.
+// The latter is hidden when the toggle is already off — nothing to flip.
+function EmptyState({
+  eligibleOnly,
+  onSeeAll,
+}: {
+  eligibleOnly: boolean;
+  onSeeAll: () => void;
+}) {
+  return (
+    <View style={styles.emptyRoot} testID="discover-empty">
+      <Text style={[textStyles.h1, styles.emptyHeadline]}>Nothing matches you — yet.</Text>
+      <Text style={[textStyles.body, styles.emptyBody]}>
+        {'Campaigns get added daily. Meanwhile, here\u2019s what to try.'}
+      </Text>
+
+      <Pressable
+        style={[styles.actionCard, shadows.hard]}
+        onPress={() => router.push('/(creator)/profile')}
+        accessibilityRole="button"
+        accessibilityLabel="Refresh your metrics"
+        testID="empty-action-refresh"
+      >
+        <Text style={[textStyles.h2, { color: colors.ink }]}>Refresh your metrics</Text>
+        <Text style={[textStyles.caption, { color: colors.ink70 }]}>
+          Your follower counts may be out of date.
+        </Text>
+      </Pressable>
+
+      {eligibleOnly ? (
+        <Pressable
+          style={[styles.actionCard, shadows.hard]}
+          onPress={onSeeAll}
+          accessibilityRole="button"
+          accessibilityLabel="See all campaigns"
+          testID="empty-action-see-all"
+        >
+          <Text style={[textStyles.h2, { color: colors.ink }]}>See all campaigns</Text>
+          <Text style={[textStyles.caption, { color: colors.ink70 }]}>
+            Turn off the eligibility filter.
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  content: {
+  root: { flex: 1, backgroundColor: colors.canvas },
+  scroll: {
     padding: spacing.base,
     gap: spacing.md,
+    paddingBottom: spacing.xxxl,
+  },
+  header: {
+    color: colors.ink,
+    marginBottom: spacing.xs,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   list: {
     gap: spacing.md,
   },
-  card: {
+  emptyBox: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  emptyRoot: {
+    gap: spacing.md,
+    paddingTop: spacing.lg,
+  },
+  emptyHeadline: {
+    color: colors.ink,
+  },
+  emptyBody: {
+    color: colors.ink70,
+  },
+  actionCard: {
     backgroundColor: colors.surface,
     borderColor: colors.ink,
     borderWidth: 2,
