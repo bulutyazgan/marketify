@@ -1072,3 +1072,20 @@ Started: (will be replaced on first run)
   - If US-044 re-verify reaches iteration #4 with the same log signature, escalate to a human operator (Supabase dashboard tenant-reset or support ticket) rather than logging a 4th identical re-verify — the Ralph loop cannot fix Supabase-tenant-side hibernation/cold-start bugs. The pattern itself already flags this as an "infrastructure-class blocker, not a code defect."
 ---
 
+## 2026-04-18 10:47 — US-051
+- Created `app/(lister)/campaigns/new/step-3.tsx` — content-rules list screen with add/remove/edit per row. Rows read/write via `useWizard().updateField('postConditions', prev => …)` (Codebase Pattern #128 functional updater), so rapid-fire taps don't race on stale arrays.
+- Each row gets an RFC-4122 v4 UUID (inline `makeUuid()`, Math.random-backed — wizard-local id only, no security boundary; server re-validates at publish). Avoids adding an `expo-crypto` dep for a single call site.
+- WizardStore already declared `WizardPostCondition = {id, text}` and `postConditions: []` during US-049 — zero store changes this iteration, which is the intended payoff of designing the full draft shape up-front.
+- Back button uses `router.canGoBack() ? router.back() : router.replace('/(lister)/campaigns/new/step-2')` so deep-linking into step-3 still lands the user somewhere sensible. Next always enabled — empty list is a valid "no content rules" listing, mirroring step-2's posture.
+- Files changed:
+  - `app/(lister)/campaigns/new/step-3.tsx` (new, 261 lines)
+  - `scripts/ralph/screenshots/us-051-empty.png` (new)
+  - `scripts/ralph/screenshots/us-051-three-rows.png` (new)
+- Quality checks: tsc ✓ / lint ✓ / supabase advisors n/a (no schema change) / mobile-mcp ✓ (3 rules added — "Mention the brand in the first 10 seconds", "Include the phrase cruelty-free", "Use vertical 9:16 aspect ratio" — all cards render with Trash2 + Add rule + Next below)
+- Code-reviewer verdict: issues fixed in this commit. Two findings — (1) `TextInput` missing `maxFontSizeMultiplier={1.3}`, applied; (2) double `shadows.hard` on card + inputWrap flagged as redundant, intentionally kept — sibling `step-2.tsx` has the exact same nested-shadow pattern (lines 196 + 254), and the project rule "Match existing conventions. Don't refactor adjacent code." takes precedence over a cosmetic polish that would cause wizard visual drift between steps. Documented in the progress entry.
+- **Learnings for future iterations:**
+  - When the wizard store's shape is pre-declared by the foundational step (US-049 here covers all 5 steps' fields), subsequent step screens stay tiny — the cost of "design the full draft shape up-front" is amortized across every downstream wizard story. Before adding a new field to the store in a step-N story, check if step-1 already provisioned it.
+  - Inline RFC-4122 v4 generator is the right call for UI-only ids (wizard rows, list-row keys). Criteria: (a) server re-validates at persist time, (b) no cryptographic guarantee is required, (c) the id never crosses an untrusted boundary as authority. When any of those fail, reach for `expo-crypto` instead.
+  - Code-reviewer "consistency/cleanup" findings that contradict a sibling file's pattern (here: double shadows matching step-2) must be weighed against the project rule "Match existing conventions. Don't refactor adjacent code." Resolution: keep the sibling-consistent pattern, document the rejection in the commit's progress entry so future reviews see the reasoning and don't re-open the same thread.
+---
+

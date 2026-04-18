@@ -763,8 +763,8 @@
         "Commit"
       ],
       "priority": 51,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "step-3 wires into existing WizardStore.postConditions (id+text, already in the store shape). Inline RFC-4122 v4 UUID generator via Math.random \u2014 no expo-crypto dep needed for wizard-local ids (server re-validates at publish). Mutations use updateField functional updater (Codebase Pattern #128) so rapid-fire add/remove/edit read the latest array. Code-reviewer: double shadows.hard on card + inputWrap rejected as sibling-consistent with step-2 (matches project rule 'don't refactor adjacent code'); missing maxFontSizeMultiplier on TextInput fixed in same commit. Mobile-mcp: three rules added \u2014 'Mention the brand in the first 10 seconds', 'Include the phrase cruelty-free', 'Use vertical 9:16 aspect ratio' \u2014 see scripts/ralph/screenshots/us-051-{empty,three-rows}.png."
     },
     {
       "id": "US-052",
