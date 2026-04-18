@@ -55,23 +55,11 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { signJwt } from "../_shared/jwt.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
-  type ApifyRunResult,
-  type ApifyWebhookSpec,
-  runInstagramDetails,
-  runInstagramPosts,
-  runTikTokProfile,
-} from "../_shared/apify.ts";
-
-const APIFY_WAIT_SECS = 60;
-const APIFY_TERMINAL_EVENTS = [
-  "ACTOR.RUN.SUCCEEDED",
-  "ACTOR.RUN.FAILED",
-  "ACTOR.RUN.TIMED_OUT",
-  "ACTOR.RUN.ABORTED",
-];
-
-type MetricsKey = "tiktok" | "ig_details" | "ig_posts";
-type MetricsStatus = "fresh" | "refreshing" | "failed";
+  type ApifyDispatchLink,
+  dispatchApifyForLinks,
+  type MetricsKey,
+  type MetricsStatus,
+} from "../_shared/apify-dispatch.ts";
 
 interface SignupRequest {
   username?: unknown;
@@ -205,126 +193,30 @@ async function dispatchApifyRuns(params: {
   tiktokHandle: string | null;
   instagramHandle: string | null;
 }): Promise<Partial<Record<MetricsKey, MetricsStatus>>> {
-  const { supabase, supabaseUrl, userId, tiktokHandle, instagramHandle } =
-    params;
-  const metricsStatus: Partial<Record<MetricsKey, MetricsStatus>> = {};
+  const { supabase, supabaseUrl, userId } = params;
 
-  const apifyKey = Deno.env.get("APIFY_KEY");
-  const webhookSecret = Deno.env.get("APIFY_WEBHOOK_SECRET");
-  if (!apifyKey || !webhookSecret) {
-    console.warn(
-      "apify dispatch skipped: APIFY_KEY or APIFY_WEBHOOK_SECRET missing",
-    );
-    return metricsStatus;
-  }
+  // Env-var presence is checked inside dispatchApifyForLinks; no need to
+  // gate the social_links lookup on it here.
 
   const { data: links, error: linksError } = await supabase
     .from("social_links")
-    .select("id,platform")
+    .select("id,platform,handle")
     .eq("user_id", userId);
   if (linksError) {
     console.error("social_links lookup failed", linksError);
-    return metricsStatus;
+    return {};
   }
 
-  const linkRows = (links ?? []) as Array<{ id: string; platform: string }>;
-  const tiktokLinkId = linkRows.find((l) => l.platform === "tiktok")?.id;
-  const igLinkId = linkRows.find((l) => l.platform === "instagram")?.id;
+  const linkRows = (links ?? []) as Array<
+    { id: string; platform: string; handle: string }
+  >;
+  const dispatchLinks: ApifyDispatchLink[] = linkRows
+    .filter((l) => l.platform === "tiktok" || l.platform === "instagram")
+    .map((l) => ({
+      linkId: l.id,
+      platform: l.platform as "tiktok" | "instagram",
+      handle: l.handle,
+    }));
 
-  const webhookUrl = `${supabaseUrl}/functions/v1/apify-webhook`;
-  const buildWebhook = (
-    linkId: string,
-    scrapeMode: "tiktok_profile" | "ig_details" | "ig_posts",
-  ): ApifyWebhookSpec => ({
-    eventTypes: APIFY_TERMINAL_EVENTS,
-    requestUrl: webhookUrl,
-    // Build a `resource` object field-by-field using dot-notation
-    // placeholders. Apify only substitutes placeholders that appear inside
-    // quoted JSON string values when `shouldInterpolateStrings: true`; bare
-    // unquoted `{{var}}` substitutes the raw JSON value but can't round-trip
-    // through JSON.stringify. Sticking to the quoted form keeps the template
-    // valid JSON before substitution and readable by any linter.
-    // apify-webhook/index.ts validResource requires id, defaultDatasetId,
-    // status, and actId on the resource object.
-    payloadTemplate: JSON.stringify({
-      eventType: "{{eventType}}",
-      resource: {
-        id: "{{resource.id}}",
-        defaultDatasetId: "{{resource.defaultDatasetId}}",
-        status: "{{resource.status}}",
-        actId: "{{resource.actId}}",
-      },
-      social_link_id: linkId,
-      scrape_mode: scrapeMode,
-      run_id: "{{resource.id}}",
-      dataset_id: "{{resource.defaultDatasetId}}",
-    }),
-    headersTemplate: JSON.stringify({
-      "X-Apify-Webhook-Secret": webhookSecret,
-    }),
-    shouldInterpolateStrings: true,
-  });
-
-  interface Task {
-    key: MetricsKey;
-    run: () => Promise<ApifyRunResult>;
-  }
-  const tasks: Task[] = [];
-  if (tiktokHandle && tiktokLinkId) {
-    tasks.push({
-      key: "tiktok",
-      run: () =>
-        runTikTokProfile(tiktokHandle, {
-          waitSecs: APIFY_WAIT_SECS,
-          webhooks: [buildWebhook(tiktokLinkId, "tiktok_profile")],
-        }),
-    });
-  }
-  if (instagramHandle && igLinkId) {
-    tasks.push({
-      key: "ig_details",
-      run: () =>
-        runInstagramDetails(instagramHandle, {
-          waitSecs: APIFY_WAIT_SECS,
-          webhooks: [buildWebhook(igLinkId, "ig_details")],
-        }),
-    });
-    tasks.push({
-      key: "ig_posts",
-      run: () =>
-        runInstagramPosts(instagramHandle, {
-          waitSecs: APIFY_WAIT_SECS,
-          webhooks: [buildWebhook(igLinkId, "ig_posts")],
-        }),
-    });
-  }
-
-  if (tasks.length === 0) return metricsStatus;
-
-  const settled = await Promise.allSettled(tasks.map((t) => t.run()));
-  settled.forEach((outcome, i) => {
-    const key = tasks[i].key;
-    if (outcome.status === "fulfilled") {
-      // Apify's waitForFinish returns either SUCCEEDED (complete) or a
-      // transitional status when the wait expires: READY, RUNNING,
-      // TIMING-OUT, ABORTING. All four mean the webhook will still
-      // fire and complete the snapshot, so they map to 'refreshing'.
-      // Anything else (e.g. FAILED, ABORTED, TIMED-OUT terminal) is a
-      // terminal non-success — 'failed'. The webhook receiver will
-      // also write the failed row; the two converge via the run_id
-      // unique index.
-      const s = outcome.value.status;
-      metricsStatus[key] = s === "SUCCEEDED"
-        ? "fresh"
-        : s === "READY" || s === "RUNNING" ||
-            s === "TIMING-OUT" || s === "ABORTING"
-        ? "refreshing"
-        : "failed";
-    } else {
-      console.error(`apify ${key} dispatch failed`, outcome.reason);
-      metricsStatus[key] = "failed";
-    }
-  });
-
-  return metricsStatus;
+  return await dispatchApifyForLinks({ supabaseUrl, links: dispatchLinks });
 }

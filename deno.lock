@@ -18,6 +18,9 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@expo-google-fonts/jetbrains-mono@~0.4.1",
+        "npm:@expo-google-fonts/outfit@~0.4.3",
+        "npm:@expo-google-fonts/rubik@~0.4.2",
         "npm:@react-native-async-storage/async-storage@2.2.0",
         "npm:@supabase/supabase-js@^2.103.3",
         "npm:@types/react@19.1",
@@ -28,6 +31,8 @@
         "npm:expo-haptics@~15.0.8",
         "npm:expo-linking@~8.0.11",
         "npm:expo-router@~6.0.23",
+        "npm:expo-secure-store@~15.0.8",
+        "npm:expo-splash-screen@~31.0.13",
         "npm:expo-status-bar@~3.0.9",
         "npm:expo@~54.0.33",
         "npm:lucide-react-native@^1.8.0",

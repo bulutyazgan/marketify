@@ -69,7 +69,7 @@ export function PrimitivesPreview() {
             listerHandle="@cleanco"
             priceCents={25000}
             currency="USD"
-            preConditionSummary="50K+ TikTok followers · 5K+ avg views"
+            preConditionSummary="50K+ TikTok followers · 5K+ avg views (last 10)"
             status="pending"
             onPress={() => {}}
             testID="card-clean-beauty"

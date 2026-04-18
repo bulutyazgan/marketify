@@ -2,7 +2,8 @@
 //
 // Contract:
 //   POST add:    { action: 'add', platform: 'tiktok'|'instagram', handle: string }
-//     → 200 { social_link_id: string }
+//     → 200 { social_link_id: string, metrics_status: { tiktok?: Status, ig_details?: Status, ig_posts?: Status } }
+//       where Status is 'fresh' | 'refreshing' | 'failed'.
 //   POST unlink: { action: 'unlink', social_link_id: string }
 //     → 200 { ok: true }
 //     → 400 { error: 'INVALID_JSON' | 'INVALID_REQUEST' }
@@ -19,15 +20,17 @@
 // Atomicity: single INSERT (add) or single UPDATE (unlink) inside the
 // public.manage_social_link RPC's implicit transaction.
 //
-// Scope: this function does NOT kick Apify scrapes on add. Pulling metrics
-// for a freshly-added handle is the job of US-036 (pull-to-refresh on
-// Profile) — a pattern identical to metrics-refresh. Keeping scope tight
-// here matches the story AC ("Add Handle / Unlink Handle actions wired to
-// a small edge function").
+// Apify dispatch: on a successful add, the function kicks the Apify runs
+// for the freshly-added handle via _shared/apify-dispatch.ts (one
+// tiktok_profile run for TikTok; ig_details + ig_posts for Instagram).
+// The per-platform outcome is reported in metrics_status so the client
+// can render 'refreshing' placeholders or surface a 'failed' state.
+// A dispatch failure does NOT roll back the social_links row.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { verifyJwt } from "../_shared/jwt.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { dispatchApifyForLinks } from "../_shared/apify-dispatch.ts";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -142,7 +145,21 @@ Deno.serve(async (req) => {
       console.error("manage_social_link add returned unexpected shape", result);
       return jsonResponse(500, { error: "DB_ERROR" });
     }
-    return jsonResponse(200, { social_link_id: result.social_link_id });
+    // Dispatch failure must NOT roll back the inserted row — the user's
+    // handle is linked, they just won't see metrics until the next scrape.
+    let metricsStatus: Awaited<ReturnType<typeof dispatchApifyForLinks>> = {};
+    try {
+      metricsStatus = await dispatchApifyForLinks({
+        supabaseUrl,
+        links: [{ linkId: result.social_link_id, platform, handle }],
+      });
+    } catch (err) {
+      console.error("apify dispatch threw on add", err);
+    }
+    return jsonResponse(200, {
+      social_link_id: result.social_link_id,
+      metrics_status: metricsStatus,
+    });
   }
 
   if (body.action === "unlink") {

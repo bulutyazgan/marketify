@@ -438,7 +438,7 @@ function PlatformCard({
           <Text style={[textStyles.mono, styles.handleRow]}>@{link.handle}</Text>
           <View style={styles.metricsRow}>
             <Metric label="Followers" value={formatCount(follower)} />
-            <Metric label="Avg views" value={formatCount(avgViews)} />
+            <Metric label="Avg views (last 10)" value={formatCount(avgViews)} />
           </View>
           <Text style={[textStyles.caption, styles.lastRefreshed]}>
             Last refreshed {lastRefreshedLabel}
