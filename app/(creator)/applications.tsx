@@ -290,8 +290,14 @@ function ApplicationRowCard({ row, style }: ApplicationRowCardProps) {
   const relative = formatRelativeTime(new Date(row.created_at));
 
   const onPress = useCallback(() => {
-    router.push(`/(creator)/listing/${row.listing_id}`);
-  }, [row.listing_id]);
+    // Approved apps route to the submission composer (US-046); everything
+    // else still surfaces the listing detail so creators can read the brief.
+    if (row.status === 'approved') {
+      router.push(`/(creator)/submit/${row.id}`);
+    } else {
+      router.push(`/(creator)/listing/${row.listing_id}`);
+    }
+  }, [row.id, row.listing_id, row.status]);
 
   return (
     <Pressable

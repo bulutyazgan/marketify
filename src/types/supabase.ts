@@ -821,6 +821,19 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_my_application_for_submit: {
+        Args: { p_application_id: string }
+        Returns: {
+          application_id: string
+          application_status: Database["public"]["Enums"]["application_status"]
+          lister_handle: string
+          listing_id: string
+          listing_title: string
+          listing_version_id: string
+          post_conditions: Json
+          version_title: string
+        }[]
+      }
       list_discover_feed: {
         Args: { p_eligible_only?: boolean }
         Returns: {
