@@ -33,9 +33,9 @@ import type { Database } from '@/types/supabase';
 // sub-status inside Inactive.
 //
 // FAB mirrors the Dashboard (docs/design.md §3.2 — FAB on both tabs) and
-// routes to the wizard step 1. CampaignCard is rendered non-interactive
-// (no onPress) — a lister-side listing-detail route doesn't exist yet
-// and the AC only requires rendering, not navigation.
+// routes to the wizard step 1. Each CampaignCard taps through to the
+// edit-campaign screen (US-055) at
+// `/(lister)/campaigns/[id]/edit`.
 
 type ListingStatus = Database['public']['Enums']['listing_status'];
 type Segment = 'active' | 'inactive';
@@ -155,6 +155,10 @@ export default function ListerCampaigns() {
     router.push('/(lister)/campaigns/new/step-1');
   }, []);
 
+  const onOpenCampaign = useCallback((id: string) => {
+    router.push({ pathname: '/(lister)/campaigns/[id]/edit', params: { id } });
+  }, []);
+
   const byBucket = useMemo(() => {
     const map: Record<Segment, CampaignRow[]> = { active: [], inactive: [] };
     for (const r of rows) {
@@ -211,6 +215,7 @@ export default function ListerCampaigns() {
                   { label: 'applications', value: row.applications_count },
                   { label: 'submissions', value: row.submissions_count },
                 ]}
+                onPress={() => onOpenCampaign(row.id)}
                 testID={`campaign-${row.id}`}
               />
             ))}

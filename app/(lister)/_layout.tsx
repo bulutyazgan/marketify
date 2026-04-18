@@ -47,9 +47,12 @@ export default function ListerLayout() {
   if (role !== 'lister') return <Redirect href="/(auth)" />;
 
   // Hide the tab bar when the user is inside the campaign-creation wizard
-  // (US-049+). Route-group parens are stripped from the URL, so
-  // `/(lister)/campaigns/new/step-1` appears here as `/campaigns/new/step-1`.
-  const hideTabBar = pathname.startsWith('/campaigns/new');
+  // (US-049+) or the edit-campaign screen (US-055). Route-group parens are
+  // stripped from the URL, so `/(lister)/campaigns/new/step-1` appears
+  // here as `/campaigns/new/step-1`, and `/(lister)/campaigns/[id]/edit`
+  // appears as `/campaigns/<uuid>/edit`.
+  const hideTabBar =
+    pathname.startsWith('/campaigns/new') || /^\/campaigns\/[^/]+\/edit$/.test(pathname);
 
   return (
     <View style={styles.root}>

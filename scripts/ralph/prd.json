@@ -821,8 +821,8 @@
         "Commit"
       ],
       "priority": 55,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added `app/(lister)/campaigns/[id]/edit.tsx` — pre-fills from direct `listings` select (listings_owner_all RLS guards owner-only), renders title/description/price/currency/max_submissions fields in the neubrutalist form idiom. Versioned-field diff on save: if price_cents|currency|max_submissions changed, count pending applications via PostgREST `applications.select(head,count:exact)` under applications_lister_read (no RPC needed) and render a centered confirm modal per docs/design.md §5.2 line 635 (design carves confirmations out of the bottom-sheet default in §3.3). Non-versioned edits skip the modal; zero-pending versioned edits also skip the modal and commit directly. On confirm, the PATCH fires through the existing us_010 cascade trigger (`app_private.bump_listing_version`) which flips pending apps to `cancelled_listing_edit` and inserts notifications server-side. Wired My Campaigns card tap → edit route; extended the lister _layout hideTabBar regex to hide the TabBar under `/campaigns/[id]/edit` (same pattern as the wizard). Conditions/sample_videos editing deferred with a spec-gap note in the header — those fields require §15b threshold-refresh triggers (Pattern #52) to land first. Code-reviewer fixes applied pre-commit: synchronous `savingRef = useRef(false)` double-tap guard (Pattern #106), `parsedPriceCents === null` rejection in inputsValid (dropped silent 0-coercion — price_cents is NOT NULL), and backdrop Pressable `onPress={saving ? undefined : onDismiss}` to block dismiss during in-flight PATCH. Mobile-mcp verified end-to-end on iPhone 17 Pro sim: tap card → edit screen → change $50→$5075 → modal reads 'This will cancel 3 pending applications. They'll be notified.' → Continue → card list reflects $5,075 and DB shows `pending: 0, cancelled_listing_edit: 3, listing_versions: 2`. Screenshots: us-055-edit-form.png, us-055-cascade-modal.png, us-055-after-save.png."
     },
     {
       "id": "US-056",
