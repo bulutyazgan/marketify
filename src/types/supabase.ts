@@ -863,9 +863,26 @@ export type Database = {
           version_title: string
         }[]
       }
+      list_my_campaigns: {
+        Args: never
+        Returns: {
+          applications_count: number
+          created_at: string
+          currency: string
+          id: string
+          min_followers_instagram: number
+          min_followers_tiktok: number
+          price_cents: number
+          status: Database["public"]["Enums"]["listing_status"]
+          submissions_count: number
+          title: string
+          updated_at: string
+        }[]
+      }
       list_my_submissions: {
         Args: never
         Returns: {
+          application_id: string
           created_at: string
           id: string
           lister_handle: string

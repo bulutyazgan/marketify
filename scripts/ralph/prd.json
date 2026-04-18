@@ -806,8 +806,8 @@
         "Commit"
       ],
       "priority": 54,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added `list_my_campaigns` SECURITY DEFINER RPC mirroring the `list_my_applications` skeleton (Pattern #118) \u2014 returns caller's listings plus per-row applications_count + submissions_count sub-selects, ordered updated_at desc. Two-segment control Active vs Inactive; the DB enum has 5 statuses and draft|paused|closed|archived all bucket to Inactive (StatusPill surfaces the sub-status inside). CampaignCard extended with optional `meta?: readonly {label,value}[]` and `statusLabel?: string` passthrough \u2014 both default to undefined so existing callsites (Discover feed) are unaffected. Listing-status → StatusPill palette mapping: active→approved-green, draft→pending-amber, paused/closed/archived→cancelled-grey with the override label. Cards rendered non-interactive (no onPress) since a lister-side listing-detail route doesn't exist yet and the AC doesn't require navigation; CampaignCard's `!interactive` guard handles this cleanly (disabled, no haptics, no animation). Defensive `?? currency` fallback added to CampaignCard.formatPrice so unknown currency codes from the typed-string cast degrade to the raw code rather than `undefined5`. Segment counts shown inline in tab labels (ACTIVE (n) / INACTIVE (n)) \u2014 new UX vs. Applications tab, matches the Inbox-style affordance listers expect."
     },
     {
       "id": "US-055",

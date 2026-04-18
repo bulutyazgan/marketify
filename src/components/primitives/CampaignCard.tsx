@@ -22,6 +22,11 @@ import { StatusPill, type StatusPillStatus } from './StatusPill';
 
 export type CampaignCardCurrency = 'USD' | 'EUR' | 'GBP';
 
+export type CampaignCardMetaItem = {
+  label: string;
+  value: string | number;
+};
+
 export type CampaignCardProps = {
   title: string;
   listerHandle: string;
@@ -29,6 +34,16 @@ export type CampaignCardProps = {
   currency?: CampaignCardCurrency;
   preConditionSummary?: string;
   status?: StatusPillStatus;
+  // Override for the pill's default text label — used when the upstream
+  // enum doesn't map 1:1 to the StatusPill palette (e.g. listing_status
+  // "active" rendered with the approved-green pill but labeled "Active"
+  // rather than "Approved").
+  statusLabel?: string;
+  // Optional per-card metadata row rendered under the footer — e.g. on
+  // the lister "My Campaigns" screen (US-054) where each card shows its
+  // applications + submissions counts. Each item renders as "value label";
+  // items are separated by a middle dot.
+  meta?: readonly CampaignCardMetaItem[];
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -42,7 +57,12 @@ const CURRENCY_SYMBOL: Record<CampaignCardCurrency, string> = {
 
 function formatPrice(priceCents: number, currency: CampaignCardCurrency): string {
   const whole = Math.round(priceCents / 100);
-  return `${CURRENCY_SYMBOL[currency]}${whole.toLocaleString('en-US')}`;
+  // Fallback to the raw currency code when an unknown value sneaks in from
+  // a callsite that cast an untyped string (e.g. RPC returns `text`): safer
+  // than rendering "undefined5" if the DB ever holds a currency outside the
+  // USD/EUR/GBP trio the wizard writes.
+  const symbol = CURRENCY_SYMBOL[currency] ?? currency;
+  return `${symbol}${whole.toLocaleString('en-US')}`;
 }
 
 // Feed cell per docs/design.md §5.1 — hard-shadow card, 2px ink border. Press
@@ -57,6 +77,8 @@ export function CampaignCard({
   currency = 'USD',
   preConditionSummary,
   status,
+  statusLabel,
+  meta,
   onPress,
   style,
   testID,
@@ -109,8 +131,17 @@ export function CampaignCard({
         ) : null}
         <View style={styles.footerRow}>
           <Text style={[textStyles.h2, styles.price]}>{formatPrice(priceCents, currency)}</Text>
-          {status ? <StatusPill status={status} /> : null}
+          {status ? <StatusPill status={status} label={statusLabel} /> : null}
         </View>
+        {meta && meta.length > 0 ? (
+          <Text
+            style={[textStyles.caption, styles.meta]}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}
+          >
+            {meta.map((m) => `${m.value} ${m.label}`).join(' · ')}
+          </Text>
+        ) : null}
       </Animated.View>
     </Pressable>
   );
@@ -143,5 +174,9 @@ const styles = StyleSheet.create({
   },
   price: {
     color: colors.ink,
+  },
+  meta: {
+    color: colors.ink70,
+    marginTop: spacing.xs,
   },
 });
