@@ -863,6 +863,24 @@ export type Database = {
           version_title: string
         }[]
       }
+      list_my_applications_as_lister: {
+        Args: never
+        Returns: {
+          application_id: string
+          cover_note: string
+          created_at: string
+          creator_user_id: string
+          creator_username: string
+          instagram_avg_views_last_10: number
+          instagram_follower_count: number
+          instagram_handle: string
+          listing_id: string
+          listing_title: string
+          status: Database["public"]["Enums"]["application_status"]
+          tiktok_follower_count: number
+          tiktok_handle: string
+        }[]
+      }
       list_my_campaigns: {
         Args: never
         Returns: {
@@ -924,6 +942,15 @@ export type Database = {
           p_oembed?: Json
           p_platform: Database["public"]["Enums"]["platform"]
           p_video_url: string
+        }
+        Returns: Json
+      }
+      update_listing_samples_rpc: {
+        Args: {
+          p_confirm_cascade: boolean
+          p_lister_id: string
+          p_listing_id: string
+          p_samples: Json
         }
         Returns: Json
       }
