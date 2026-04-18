@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -14,7 +14,9 @@ import { SPRING_SOFT, withReducedMotion } from '@/design/motion';
 import { useReducedMotion } from '@/design/useReducedMotion';
 import { textStyles } from '@/design/typography';
 import { ButtonPrimary, ButtonSecondary } from '@/components/primitives/Button';
-import { useAuth } from '@/lib/auth';
+import { useToast } from '@/components/primitives/Toast';
+import { useAuth, type AuthRole, type AuthUser } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 // Role picker (docs/design.md §2.1 Welcome). Two large hard-shadow cards with
 // 2px ink borders: "I'm a Creator" + "I'm a Company". Tapping routes forward
@@ -137,45 +139,97 @@ function RolePickerCard({
   );
 }
 
-// Dev-only signin bypass. Skips the edge functions + routes directly into the
-// role's tab group. Kept inside `__DEV__` so Metro strips the component (and
-// the fake tokens / UUIDs it closes over) from production bundles — top-level
-// const declarations would survive dead-code removal (Codebase Patterns #96).
+// Dev-only signin bypass. Mints a real Marketify JWT by calling the same
+// auth-signup-{creator,lister} edge functions the production signup screens
+// hit, with throwaway handles suffixed by Date.now() to avoid USERNAME_TAKEN
+// collisions. Kept inside `__DEV__` so Metro strips the component from
+// production bundles — top-level const declarations would survive dead-code
+// removal (Codebase Patterns #96).
 function DevRolePicker() {
+  const router = useRouter();
   const { signIn } = useAuth();
+  const { show: showToast } = useToast();
+  const [busyRole, setBusyRole] = useState<AuthRole | null>(null);
 
-  const creatorUser = {
-    id: '00000000-0000-0000-0000-000000000001',
-    username: 'dev_creator',
-    email: null,
-    role: 'creator' as const,
-    created_at: new Date(0).toISOString(),
-    updated_at: new Date(0).toISOString(),
-    deleted_at: null,
-  };
-  const listerUser = {
-    id: '00000000-0000-0000-0000-000000000002',
-    username: 'dev_lister',
-    email: 'dev-lister@example.com',
-    role: 'lister' as const,
-    created_at: new Date(0).toISOString(),
-    updated_at: new Date(0).toISOString(),
-    deleted_at: null,
-  };
+  const devSignIn = useCallback(
+    async (role: AuthRole) => {
+      if (busyRole) return;
+      setBusyRole(role);
+      const stamp = Date.now();
+      const username = `dev_${role}_${stamp}`;
+      const nowIso = new Date().toISOString();
+      try {
+        if (role === 'creator') {
+          const { data, error } = await supabase.functions.invoke<{
+            token: string;
+            user_id: string;
+          }>('auth-signup-creator', {
+            body: { username, tiktok_handle: `dev_${stamp}` },
+          });
+          if (error || !data?.token) throw error ?? new Error('NO_TOKEN');
+          const nextUser: AuthUser = {
+            id: data.user_id,
+            username,
+            email: null,
+            role: 'creator',
+            created_at: nowIso,
+            updated_at: nowIso,
+            deleted_at: null,
+          };
+          signIn(data.token, nextUser);
+          router.replace('/(creator)/feed');
+        } else {
+          const email = `${username}@example.dev`;
+          const { data, error } = await supabase.functions.invoke<{
+            token: string;
+            user_id: string;
+          }>('auth-signup-lister', {
+            body: { username, email, org_name: 'Dev Co' },
+          });
+          if (error || !data?.token) throw error ?? new Error('NO_TOKEN');
+          const nextUser: AuthUser = {
+            id: data.user_id,
+            username,
+            email,
+            role: 'lister',
+            created_at: nowIso,
+            updated_at: nowIso,
+            deleted_at: null,
+          };
+          signIn(data.token, nextUser);
+          router.replace('/(lister)/dashboard');
+        }
+      } catch (err) {
+        console.error(`Dev ${role} signin failed`, err);
+        showToast({ message: `Dev ${role} signin failed`, variant: 'error' });
+      } finally {
+        setBusyRole(null);
+      }
+    },
+    [busyRole, router, showToast, signIn],
+  );
 
   return (
     <View style={styles.devBlock}>
       <Text style={[textStyles.caption, styles.devCaption]}>DEV BYPASS</Text>
       <ButtonPrimary
         label="Sign in as creator"
-        onPress={() => signIn('dev-creator-token', creatorUser)}
+        onPress={() => {
+          void devSignIn('creator');
+        }}
+        loading={busyRole === 'creator'}
+        disabled={busyRole !== null}
         accessibilityLabel="Dev sign in as creator"
         testID="dev-signin-creator"
       />
       <View style={styles.spacer} />
       <ButtonSecondary
         label="Sign in as lister"
-        onPress={() => signIn('dev-lister-token', listerUser)}
+        onPress={() => {
+          void devSignIn('lister');
+        }}
+        loading={busyRole === 'lister'}
+        disabled={busyRole !== null}
         accessibilityLabel="Dev sign in as lister"
         testID="dev-signin-lister"
       />

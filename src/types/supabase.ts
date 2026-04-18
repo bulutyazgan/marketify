@@ -816,6 +816,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_listing_rpc: {
+        Args: { p_lister_id: string; p_payload: Json }
+        Returns: Json
+      }
       current_user_id: { Args: never; Returns: string }
       current_user_role: {
         Args: never
@@ -862,7 +866,6 @@ export type Database = {
       list_my_submissions: {
         Args: never
         Returns: {
-          application_id: string
           created_at: string
           id: string
           lister_handle: string
