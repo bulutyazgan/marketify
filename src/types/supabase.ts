@@ -835,6 +835,17 @@ export type Database = {
         }
         Returns: Json
       }
+      decide_submission_rpc: {
+        Args: {
+          p_action: string
+          p_decision_note?: string
+          p_lister_id: string
+          p_override?: boolean
+          p_override_reason?: string
+          p_submission_id: string
+        }
+        Returns: Json
+      }
       get_my_application_for_submit: {
         Args: { p_application_id: string }
         Returns: {
@@ -847,6 +858,10 @@ export type Database = {
           post_conditions: Json
           version_title: string
         }[]
+      }
+      get_submission_for_lister_review: {
+        Args: { p_caller_id?: string; p_submission_id: string }
+        Returns: Json
       }
       list_discover_feed: {
         Args: { p_eligible_only?: boolean }

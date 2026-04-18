@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Repeat2 } from 'lucide-react-native';
 import { StatusPill, type StatusPillStatus } from '@/components/primitives/StatusPill';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
@@ -57,9 +58,11 @@ import type { Database } from '@/types/supabase';
 // received", info variant) gives the lister an in-app cue. Toast cooldown
 // (3s) prevents stacked banners when two submissions land back-to-back.
 //
-// Tap behavior: US-058 rows are non-interactive. US-059 will add the
-// review screen at `app/(lister)/inbox/submissions/[id].tsx` and wire
-// the tap-through.
+// Tap behavior: US-059 wires each row to the review screen
+// (`/(lister)/inbox/submissions/[id]`). The list file moved from
+// `submissions.tsx` to `submissions/index.tsx` to coexist with the
+// dynamic-route sibling — Expo Router can't have a leaf file and a
+// directory of the same name.
 
 type SubmissionStatus = Database['public']['Enums']['submission_status'];
 type Row = Database['public']['Functions']['list_my_submissions_as_lister']['Returns'][number];
@@ -319,10 +322,20 @@ function SubmissionInboxRow({ row }: { row: Row }) {
   const platformLabel = row.video_platform === 'tiktok' ? 'TikTok' : 'Instagram';
   const reuse = row.reuse_count ?? 0;
 
+  const onPress = useCallback(() => {
+    router.push(`/(lister)/inbox/submissions/${row.submission_id}` as never);
+  }, [row.submission_id]);
+
   return (
-    <View
-      style={[styles.card, shadows.hard]}
-      accessibilityLabel={`Submission from ${row.creator_username}, ${pillStatus}, submitted ${relative}`}
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        shadows.hard,
+        pressed ? styles.cardPressed : null,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Review submission from ${row.creator_username}, ${pillStatus}, submitted ${relative}`}
       testID={`submission-row-${row.submission_id}`}
     >
       <View style={styles.cardTopRow}>
@@ -356,7 +369,7 @@ function SubmissionInboxRow({ row }: { row: Row }) {
       ) : null}
 
       <Text style={[textStyles.caption, { color: colors.ink70 }]}>Submitted {relative}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -452,6 +465,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.card,
     padding: spacing.base,
     gap: spacing.sm,
+  },
+  cardPressed: {
+    opacity: 0.85,
   },
   cardTopRow: {
     flexDirection: 'row',
