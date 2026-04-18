@@ -25,9 +25,17 @@ export const SPRING_BOUNCY = {
 // `useReducedMotion()` value is true. Reanimated 4 collapses animations configured with
 // `ReduceMotion.Always` into an instant update — that satisfies the docs/design.md §1.4
 // "Reduced motion" rule of replacing springs with a no-op.
+//
+// `'worklet'` directive: this function is invoked from BOTH JS-thread callbacks
+// (Pressable handlers, useEffect) and UI-thread Reanimated worklets (Gesture.Pan
+// onEnd / onFinalize, useAnimatedStyle). Without the directive, the babel
+// worklets plugin leaves it as a regular JS function and a worklet caller throws
+// "Tried to synchronously call a non-worklet function on the UI thread." — which
+// crashes the Pan gesture the moment the user releases.
 export function withReducedMotion<C extends { reduceMotion?: ReduceMotion }>(
   config: C,
   reduced: boolean,
 ): C {
+  'worklet';
   return reduced ? { ...config, reduceMotion: ReduceMotion.Always } : config;
 }
