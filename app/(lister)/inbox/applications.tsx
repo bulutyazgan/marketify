@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -463,14 +462,13 @@ export default function ListerInboxApplications() {
   }, [overrideSubmitting]);
 
   return (
-    <SafeAreaView style={styles.root}>
+    <View style={styles.root}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.ink} />
         }
       >
-        <Text style={[textStyles.display, styles.header]}>Inbox</Text>
         <SegmentControl active={segment} counts={counts} onChange={setSegment} />
 
         {loading ? (
@@ -520,7 +518,7 @@ export default function ListerInboxApplications() {
         onConfirm={handleOverrideConfirm}
         onCancel={handleOverrideCancel}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1050,15 +1048,11 @@ async function readDecideErrorBody(error: unknown): Promise<DecideErrorBody | nu
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1 },
   scroll: {
     padding: spacing.base,
     gap: spacing.md,
     paddingBottom: spacing.xxxl,
-  },
-  header: {
-    color: colors.ink,
-    marginBottom: spacing.xs,
   },
   segmentRow: {
     flexDirection: 'row',

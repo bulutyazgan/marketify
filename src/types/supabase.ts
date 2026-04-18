@@ -922,6 +922,26 @@ export type Database = {
           video_url: string
         }[]
       }
+      list_my_submissions_as_lister: {
+        Args: never
+        Returns: {
+          application_id: string
+          created_at: string
+          creator_user_id: string
+          creator_username: string
+          decided_at: string
+          instagram_handle: string
+          listing_id: string
+          listing_title: string
+          reuse_count: number
+          status: Database["public"]["Enums"]["submission_status"]
+          submission_id: string
+          tiktok_handle: string
+          video_platform: Database["public"]["Enums"]["platform"]
+          video_thumbnail_url: string
+          video_url: string
+        }[]
+      }
       lister_dashboard_counts: {
         Args: never
         Returns: {
