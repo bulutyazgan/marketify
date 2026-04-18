@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
   } catch {
     return jsonResponse(401, { error: "UNAUTHORIZED" });
   }
-  if (claims.role !== "creator") {
+  if (claims.app_role !== "creator") {
     return jsonResponse(403, { error: "FORBIDDEN" });
   }
 

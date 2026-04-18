@@ -1,19 +1,23 @@
 // Custom JWT helper for Marketify edge functions.
 //
-// Contract: signJwt({ sub, role, session_id }, { ttlSeconds? }) -> compact JWT.
+// Contract: signJwt({ sub, app_role, session_id }, { ttlSeconds? }) -> compact JWT.
 //           verifyJwt(token) -> parsed claims or throws.
 // Algorithm: HS256 (HMAC-SHA256) via Web Crypto.
-// Secret: MARKETIFY_JWT_SECRET env var — this is OUR signing key, deliberately
-//         separate from Supabase's built-in JWT secret. Every `/auth/*` edge
-//         function mints tokens here; RLS policies read `sub` and `role` via
-//         `auth.jwt()`. `session_id` feeds the denylist lookup in §15c.
+// Secret: MARKETIFY_JWT_SECRET env var. Must match the Supabase project's
+//         PostgREST jwt_secret so RLS sees the token as valid.
+// Claims: `role` is the Postgres role PostgREST switches into ("authenticated"
+//         for all logged-in users). The app-level role (creator | lister) lives
+//         in `app_role` so it doesn't collide with PostgREST's role-switching
+//         behavior. RLS policies read `sub` and `app_role` via `auth.jwt()`.
+//         `session_id` feeds the denylist lookup in §15c.
 // Auth:   no inbound auth requirement — this module is a building block.
 
-export type UserRole = "creator" | "lister";
+export type AppRole = "creator" | "lister";
 
 export interface JwtClaims {
   sub: string;
-  role: UserRole;
+  role: "authenticated";
+  app_role: AppRole;
   session_id: string;
   iat: number;
   exp: number;
@@ -21,7 +25,7 @@ export interface JwtClaims {
 
 export interface SignInput {
   sub: string;
-  role: UserRole;
+  app_role: AppRole;
   session_id: string;
 }
 
@@ -82,14 +86,15 @@ export async function signJwt(
   if (!Number.isFinite(ttl) || ttl <= 0) {
     throw new Error("ttlSeconds must be a positive finite number");
   }
-  if (input.role !== "creator" && input.role !== "lister") {
-    throw new Error("role must be 'creator' or 'lister'");
+  if (input.app_role !== "creator" && input.app_role !== "lister") {
+    throw new Error("app_role must be 'creator' or 'lister'");
   }
 
   const now = Math.floor(Date.now() / 1000);
   const payload: JwtClaims = {
     sub: input.sub,
-    role: input.role,
+    role: "authenticated",
+    app_role: input.app_role,
     session_id: input.session_id,
     iat: now,
     exp: now + ttl,
@@ -143,7 +148,8 @@ export async function verifyJwt(token: string): Promise<JwtClaims> {
 
   if (
     typeof payload.sub !== "string" || payload.sub.length === 0 ||
-    (payload.role !== "creator" && payload.role !== "lister") ||
+    payload.role !== "authenticated" ||
+    (payload.app_role !== "creator" && payload.app_role !== "lister") ||
     typeof payload.session_id !== "string" ||
     payload.session_id.length === 0 ||
     typeof payload.iat !== "number" ||

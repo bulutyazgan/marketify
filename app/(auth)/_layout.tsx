@@ -8,8 +8,8 @@ import { useAuth } from '@/lib/auth';
 export default function AuthLayout() {
   const { role } = useAuth();
 
-  if (role === 'creator') return <Redirect href="/(creator)/discover" />;
-  if (role === 'lister') return <Redirect href="/(lister)" />;
+  if (role === 'creator') return <Redirect href="/(creator)/feed" />;
+  if (role === 'lister') return <Redirect href="/(lister)/dashboard" />;
 
   return <Slot />;
 }

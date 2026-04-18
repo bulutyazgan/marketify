@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
   try {
     token = await signJwt({
       sub: userId,
-      role: "lister",
+      app_role: "lister",
       session_id: sessionId,
     });
   } catch (err) {

@@ -73,11 +73,11 @@ function b64url(bytes: Uint8Array): string {
 }
 
 async function signMarketifyJwt(
-  claims: { sub: string; role: "creator" | "lister"; session_id: string },
+  claims: { sub: string; app_role: "creator" | "lister"; session_id: string },
   secret: string,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  const payload = { ...claims, iat: now, exp: now + 300 };
+  const payload = { ...claims, role: "authenticated", iat: now, exp: now + 300 };
   const header = b64url(
     encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })),
   );
@@ -283,7 +283,7 @@ try {
     const badJwt = await signMarketifyJwt(
       {
         sub: SEED_CREATOR_USER_ID,
-        role: "creator",
+        app_role: "creator",
         session_id: crypto.randomUUID(),
       },
       "wrong-secret-" + Math.random().toString(36).slice(2),
@@ -309,7 +309,7 @@ try {
       const listerJwt = await signMarketifyJwt(
         {
           sub: crypto.randomUUID(),
-          role: "lister",
+          app_role: "lister",
           session_id: crypto.randomUUID(),
         },
         jwtSecret,
@@ -332,7 +332,7 @@ try {
     const creatorJwt = await signMarketifyJwt(
       {
         sub: SEED_CREATOR_USER_ID,
-        role: "creator",
+        app_role: "creator",
         session_id: crypto.randomUUID(),
       },
       jwtSecret,

@@ -61,11 +61,11 @@ function b64url(bytes: Uint8Array): string {
 }
 
 async function signMarketifyJwt(
-  claims: { sub: string; role: "creator" | "lister"; session_id: string },
+  claims: { sub: string; app_role: "creator" | "lister"; session_id: string },
   secret: string,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  const payload = { ...claims, iat: now, exp: now + 300 };
+  const payload = { ...claims, role: "authenticated", iat: now, exp: now + 300 };
   const header = b64url(encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
   const body = b64url(encoder.encode(JSON.stringify(payload)));
   const signingInput = `${header}.${body}`;
@@ -236,7 +236,7 @@ try {
   // 3. JWT signed with wrong secret
   {
     const badJwt = await signMarketifyJwt(
-      { sub: SEED_CREATOR_USER_ID, role: "creator", session_id: crypto.randomUUID() },
+      { sub: SEED_CREATOR_USER_ID, app_role: "creator", session_id: crypto.randomUUID() },
       "wrong-secret-" + Math.random().toString(36).slice(2),
     );
     const r = await post(
@@ -254,7 +254,7 @@ try {
     // 4. Lister-role JWT (valid signature, wrong role)
     {
       const listerJwt = await signMarketifyJwt(
-        { sub: crypto.randomUUID(), role: "lister", session_id: crypto.randomUUID() },
+        { sub: crypto.randomUUID(), app_role: "lister", session_id: crypto.randomUUID() },
         jwtSecret,
       );
       const r = await post(
@@ -272,7 +272,7 @@ try {
     const creatorJwt = await signMarketifyJwt(
       {
         sub: SEED_CREATOR_USER_ID,
-        role: "creator",
+        app_role: "creator",
         session_id: crypto.randomUUID(),
       },
       jwtSecret,
