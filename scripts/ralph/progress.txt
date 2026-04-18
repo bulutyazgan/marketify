@@ -1038,3 +1038,17 @@ Started: (will be replaced on first run)
   - Spec-conflict resolution when AC names a tech choice that can't run on the target runtime: satisfy the functional intent with the nearest sanctioned transport, document the deviation in the source file's header block AND in `prd.json.notes` for the story (not just in progress.txt). Future iterations reading the story context see the deviation immediately without cross-referencing the patterns log.
 - **Promoting to Codebase Patterns:** (above) Tab-group child-route opt-out via `usePathname` prefix-match; Flush-on-unmount safeguard for debounced AsyncStorage stores.
 ---
+
+## 2026-04-18 09:58 — US-044 re-verify #3 (still infra-blocked, no probe run)
+- Per Codebase Pattern #124's decision rule, checked `get_logs({service:'realtime'})` FIRST. Window shows only the broadcast slot `supabase_realtime_messages_replication_slot_v2_83_2` ever starting replication; the postgres_changes slot `supabase_realtime_replication_slot_v2_83_2` (no `_messages_` infix) has still never appeared. `Realtime.Tenants.Connect.CheckConnection` latencies: 672448 ms, 800322 ms, 672573 ms (three cold-starts >11min each), interleaved with `UnableToConnectToProject` every 5-15s and recurring `Stop tenant zioiiruwdliftpmcumav because of no connected users` hibernations. One isolated 476ms healthy check was immediately followed by another hibernation. Same tenant failure mode as the 2026-04-18 02:14 and 2026-04-18 06:43 iterations.
+- Decision: did NOT run `probe-us044-realtime.ts` this iteration — the pattern explicitly says "re-run the probe once logs show the postgres_changes slot starting without a trailing UnableToConnectToProject." Neither condition holds. Avoiding a predictable TIMED_OUT saves a fresh probe-user fixture + cleanup cycle with no information gain.
+- Files changed:
+  - `scripts/ralph/prd.json` (US-044 notes: appended 3rd re-verify entry)
+  - `scripts/ralph/progress.txt` (this entry)
+- Quality checks: tsc ✓ (no code change) / lint ✓ (no code change) / supabase advisors n/a (no DDL) / mobile-mcp n/a (no UI change)
+- Code-reviewer verdict: n/a (no code change; notes/log-only iteration)
+- **Learnings for future iterations:**
+  - The Pattern #124 decision rule saves a probe cycle when logs already show the broker is unhealthy. Check logs BEFORE investing in a signup + seed + subscribe + cleanup flow; skip the probe when the postgres_changes slot is absent and document the observation instead. Three iterations of the same TIMED_OUT is diagnostic evidence, not a debugging surface.
+  - If US-044 re-verify reaches iteration #4 with the same log signature, escalate to a human operator (Supabase dashboard tenant-reset or support ticket) rather than logging a 4th identical re-verify — the Ralph loop cannot fix Supabase-tenant-side hibernation/cold-start bugs. The pattern itself already flags this as an "infrastructure-class blocker, not a code defect."
+---
+
