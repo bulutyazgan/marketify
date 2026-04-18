@@ -825,6 +825,16 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      decide_application_rpc: {
+        Args: {
+          p_action: string
+          p_application_id: string
+          p_decision_note?: string
+          p_expected_version_id?: string
+          p_lister_id: string
+        }
+        Returns: Json
+      }
       get_my_application_for_submit: {
         Args: { p_application_id: string }
         Returns: {
