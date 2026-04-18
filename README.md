@@ -78,16 +78,6 @@ Cross-cutting:
 | **Submission review** | Embedded video (WebView), per-post-condition checklist, optional feedback, approve / reject. Status change animates on the creator's side over Realtime. |
 | **Notifications inbox** | Same shape as the creator's. |
 
-### Cross-cutting
-
-- **Custom JWT auth.** HS256 signed by an edge function. No Supabase Auth — a deliberate choice so the same JWT carries our `app_role` claim into RLS without an OAuth dance.
-- **Apify integration.** `clockworks/tiktok-scraper` (one run per TikTok refresh) and `apify/instagram-scraper` (two independent runs per IG refresh: `details` + `posts`). Webhook receiver verifies a shared secret, persists `metric_snapshots`, and a `BEFORE INSERT` trigger updates the per-user denormalized cache columns on `creator_profiles`, serialized with `pg_advisory_xact_lock`.
-- **Eligibility engine.** Pre-conditions live as a JSONB array on the listing; the trigger maintains `listings.min_followers_tiktok` / `min_followers_instagram` cache columns for fast feed filtering. Live evaluation on the listing detail screen reads the freshest snapshot.
-- **Listing versioning + cascade-cancel.** A SECURITY DEFINER trigger in `app_private` bumps a version on edits to versioned fields, copies the row, marks pending applications `cancelled_listing_edit`, and inserts notifications — all in one transaction.
-- **Metric staleness marker.** Hourly cron flips snapshots `>24h old` to `status='stale'`, surfacing the "Outdated" chip on the profile screen.
-- **Realtime subscriptions.** Notifications, applications, submissions, and metric_snapshots are all in the realtime publication. Both sides of the marketplace stay in sync without polling.
-- **Append-only events table.** Every state-changing action writes a row for audit and future analytics.
-
 ---
 
 ## Tech stack
