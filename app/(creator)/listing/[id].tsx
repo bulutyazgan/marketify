@@ -592,9 +592,12 @@ function postConditionLabel(c: ConditionRow): string {
     case 'post_family_friendly':
       return c.bool_threshold ? 'Family-friendly content only.' : 'Content may be mature.';
     case 'post_must_mention':
-      return c.text_threshold
-        ? `Must mention ${c.text_threshold}.`
-        : 'Must include a specific mention.';
+      // Lister-authored free-text rule (stored under the `post_must_mention`
+      // enum for historical reasons — see us_053_create_listing_rpc.sql §42).
+      // Render verbatim so sentences the lister writes ("Must use family-
+      // friendly language") aren't double-prefixed into "Must mention Must
+      // use…".
+      return c.text_threshold ?? 'Content rule applies.';
     case 'post_must_tag_account':
       return c.text_threshold
         ? `Must tag @${c.text_threshold.replace(/^@/, '')}.`

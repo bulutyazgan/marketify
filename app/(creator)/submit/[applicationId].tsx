@@ -663,9 +663,11 @@ function postConditionLabel(c: PostConditionRaw): string {
         ? 'My video is family-friendly.'
         : 'My video may be mature, as allowed.';
     case 'post_must_mention':
-      return c.text_threshold
-        ? `I mention "${c.text_threshold}" in the video.`
-        : 'I include the required mention.';
+      // Free-text rule authored by the lister — render verbatim. The
+      // surrounding checkbox is the affirmation, so we don't need to wrap
+      // the text in an "I mention …" template that mis-reads rules like
+      // "Must use family-friendly language".
+      return c.text_threshold ?? 'I follow the required content rule.';
     case 'post_must_tag_account':
       return c.text_threshold
         ? `I tag @${c.text_threshold.replace(/^@/, '')}.`
