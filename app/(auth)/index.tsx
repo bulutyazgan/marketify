@@ -139,12 +139,15 @@ function RolePickerCard({
   );
 }
 
-// Dev-only signin bypass. Mints a real Marketify JWT by calling the same
-// auth-signup-{creator,lister} edge functions the production signup screens
-// hit, with throwaway handles suffixed by Date.now() to avoid USERNAME_TAKEN
-// collisions. Kept inside `__DEV__` so Metro strips the component from
-// production bundles — top-level const declarations would survive dead-code
-// removal (Codebase Patterns #96).
+// Dev-only signin bypass. Calls the `dev-signin` edge function, which
+// idempotently authenticates two fixed accounts (`dev_creator` /
+// `dev_lister`) — creating them on first call, looking them up on every
+// subsequent call. Persistent accounts matter for demos: the lister who
+// just created a campaign needs to be the same lister we sign back in as
+// after switching to the creator role, otherwise the campaign isn't in
+// "My Campaigns". Kept inside `__DEV__` so Metro strips the component
+// from production bundles — top-level const declarations would survive
+// dead-code removal (Codebase Patterns #96).
 function DevRolePicker() {
   const router = useRouter();
   const { signIn } = useAuth();
@@ -155,50 +158,28 @@ function DevRolePicker() {
     async (role: AuthRole) => {
       if (busyRole) return;
       setBusyRole(role);
-      const stamp = Date.now();
-      const username = `dev_${role}_${stamp}`;
-      const nowIso = new Date().toISOString();
       try {
-        if (role === 'creator') {
-          const { data, error } = await supabase.functions.invoke<{
-            token: string;
-            user_id: string;
-          }>('auth-signup-creator', {
-            body: { username, tiktok_handle: `dev_${stamp}` },
-          });
-          if (error || !data?.token) throw error ?? new Error('NO_TOKEN');
-          const nextUser: AuthUser = {
-            id: data.user_id,
-            username,
-            email: null,
-            role: 'creator',
-            created_at: nowIso,
-            updated_at: nowIso,
-            deleted_at: null,
-          };
-          signIn(data.token, nextUser);
-          router.replace('/(creator)/feed');
-        } else {
-          const email = `${username}@example.dev`;
-          const { data, error } = await supabase.functions.invoke<{
-            token: string;
-            user_id: string;
-          }>('auth-signup-lister', {
-            body: { username, email, org_name: 'Dev Co' },
-          });
-          if (error || !data?.token) throw error ?? new Error('NO_TOKEN');
-          const nextUser: AuthUser = {
-            id: data.user_id,
-            username,
-            email,
-            role: 'lister',
-            created_at: nowIso,
-            updated_at: nowIso,
-            deleted_at: null,
-          };
-          signIn(data.token, nextUser);
-          router.replace('/(lister)/dashboard');
-        }
+        const { data, error } = await supabase.functions.invoke<{
+          token: string;
+          user_id: string;
+          role: AuthRole;
+          username: string;
+          email: string | null;
+          created_at: string;
+          updated_at: string;
+        }>('dev-signin', { body: { role } });
+        if (error || !data?.token) throw error ?? new Error('NO_TOKEN');
+        const nextUser: AuthUser = {
+          id: data.user_id,
+          username: data.username,
+          email: data.email,
+          role: data.role,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+          deleted_at: null,
+        };
+        signIn(data.token, nextUser);
+        router.replace(role === 'creator' ? '/(creator)/feed' : '/(lister)/dashboard');
       } catch (err) {
         console.error(`Dev ${role} signin failed`, err);
         showToast({ message: `Dev ${role} signin failed`, variant: 'error' });

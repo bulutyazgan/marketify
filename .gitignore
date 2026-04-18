@@ -48,3 +48,6 @@ scripts/ralph/ralph.log
 
 # Supabase CLI local cache
 supabase/.temp/
+
+# Playwright MCP artifacts
+.playwright-mcp/
