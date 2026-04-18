@@ -6,19 +6,6 @@ A mobile marketplace where independent creators claim paid content bounties post
 
 ---
 
-## Why Marketify exists
-
-Existing creator-marketing tools (Grin, Aspire, CreatorIQ) target enterprise brands with five-figure budgets, OAuth-gated platform integrations, and SaaS-blue dashboards. The space below them — small businesses commissioning a single TikTok or Reel from a mid-tier creator — is served by Instagram DMs and trust.
-
-Marketify formalizes that bottom slice into a marketplace:
-
-- **No platform OAuth.** Creators type a TikTok or Instagram handle. Public profile metrics are scraped on signup via Apify. Zero friction, no Business/Creator account conversion.
-- **Eligibility is structural, not advisory.** A campaign declares its follower / view thresholds, and creators who don't qualify never see it on their feed. Listers stop filtering through tire-kickers.
-- **Versioned campaigns with auto-cancel.** Editing price, conditions, sample videos, or submission caps bumps a version and cascades a `cancelled_listing_edit` to every pending application — with a confirmation modal that tells the lister exactly how many people are about to be cancelled.
-- **Re-check at approve-time.** Eligibility is re-evaluated when the lister approves, not when the creator applies. Prevents metric-gaming and lets the lister see (and override) drift.
-
----
-
 ## Core user loop
 
 ```
