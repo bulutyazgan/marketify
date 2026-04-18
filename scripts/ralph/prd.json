@@ -706,8 +706,8 @@
         "Commit"
       ],
       "priority": 47,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Spec gap: file kept as app/(creator)/submissions.tsx (not submitted.tsx) to preserve the TabBar route established in US-031 — header renders \"Submitted\" per docs/design.md. Realtime subscription omits server-side filter because submissions has no direct creator_id column; RLS policy submissions_creator_rw (join-through-applications) is the security boundary. Publication add landed in us_047_submissions_realtime_publication migration."
     },
     {
       "id": "US-048",

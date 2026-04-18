@@ -859,6 +859,21 @@ export type Database = {
           version_title: string
         }[]
       }
+      list_my_submissions: {
+        Args: never
+        Returns: {
+          application_id: string
+          created_at: string
+          id: string
+          lister_handle: string
+          listing_id: string
+          listing_title: string
+          status: Database["public"]["Enums"]["submission_status"]
+          version_title: string
+          video_platform: Database["public"]["Enums"]["platform"]
+          video_url: string
+        }[]
+      }
       manage_social_link: {
         Args: {
           p_action: string
