@@ -92,7 +92,10 @@ import {
   runTikTokProfile,
 } from "../_shared/apify.ts";
 
-const THROTTLE_SECS = 6 * 60 * 60;
+// Demo build: throttle reduced from 6h to 30s so the app can be exercised
+// without waiting out the production cooldown. Revert to `6 * 60 * 60`
+// before shipping.
+const THROTTLE_SECS = 30;
 const APIFY_WAIT_SECS = 60;
 const APIFY_TERMINAL_EVENTS = [
   "ACTOR.RUN.SUCCEEDED",
