@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -12,9 +12,11 @@ import {
 import { router } from 'expo-router';
 import { StatusPill, type StatusPillStatus } from '@/components/primitives/StatusPill';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
+import { useToast } from '@/components/primitives/Toast';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
+import { getCachedToken } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { formatRelativeTime } from '@/lib/time';
 import type { Database } from '@/types/supabase';
@@ -31,6 +33,17 @@ import type { Database } from '@/types/supabase';
 // DB enum has 6 values; withdrawn + cancelled_listing_* all bucket to
 // "Cancelled" per design §3.1 label + AC's 4-segment design. Route path
 // matches docs/design.md:151 canonical URL `/(creator)/applications`.
+//
+// US-044 extends this screen with a Supabase Realtime subscription on
+// UPDATEs to `public.applications` filtered by `creator_id=me`. On status
+// change we patch the affected row in state (so it visibly jumps to the
+// new segment without a reload) and fire a success/error toast for the
+// two decisions the AC calls out: approved and rejected. The applications
+// table was added to the `supabase_realtime` publication in the companion
+// migration `us_044_applications_realtime_publication`. RLS
+// (`applications_creator_rw`, polcmd='*') already restricts the stream to
+// the caller's own rows — the client-side filter is an additional
+// throughput guard, not the security boundary.
 
 type ApplicationStatus = Database['public']['Enums']['application_status'];
 type Segment = 'pending' | 'approved' | 'rejected' | 'cancelled';
@@ -106,11 +119,21 @@ function SegmentButton({ label, selected, onPress, testID }: SegmentButtonProps)
 export default function Applications() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const { show: showToast } = useToast();
 
   const [segment, setSegment] = useState<Segment>('pending');
   const [rows, setRows] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Realtime handler reads the prior status to detect real transitions
+  // (no-op UPDATEs shouldn't trigger a toast). A ref mirrors `rows` so the
+  // subscription callback sees the latest state without re-subscribing on
+  // every list mutation.
+  const rowsRef = useRef<ApplicationRow[]>([]);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -129,6 +152,62 @@ export default function Applications() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // US-044 — Subscribe to UPDATE events on the caller's own applications.
+  // RLS (`applications_creator_rw`) enforces the security boundary; the
+  // `creator_id=eq.<id>` filter is a client-side throughput guard so the
+  // Realtime broker doesn't ship rows we'll discard. We use
+  // `supabase.realtime.setAuth(token)` for the same reason as the US-036
+  // pattern (Codebase Pattern #105) — websocket auth doesn't go through
+  // the marketifyFetch Authorization wrapper.
+  useEffect(() => {
+    if (!userId) return;
+    const token = getCachedToken();
+    if (!token) return;
+    let cancelled = false;
+    let activeChannel: ReturnType<typeof supabase.channel> | null = null;
+    void supabase.realtime.setAuth(token).then(() => {
+      if (cancelled) return;
+      activeChannel = supabase
+        .channel(`creator-applications-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'applications',
+            filter: `creator_id=eq.${userId}`,
+          },
+          (payload) => {
+            const next = payload.new as { id?: string; status?: ApplicationStatus };
+            if (!next.id || !next.status) return;
+            const prior = rowsRef.current.find((r) => r.id === next.id);
+            if (!prior) return;
+            if (prior.status === next.status) return;
+            const nextStatus = next.status;
+            setRows((cur) =>
+              cur.map((r) => (r.id === next.id ? { ...r, status: nextStatus } : r)),
+            );
+            if (nextStatus === 'approved') {
+              showToast({
+                message: 'Your application was approved',
+                variant: 'success',
+              });
+            } else if (nextStatus === 'rejected') {
+              showToast({
+                message: 'Your application was rejected',
+                variant: 'error',
+              });
+            }
+          },
+        )
+        .subscribe();
+    });
+    return () => {
+      cancelled = true;
+      if (activeChannel) void supabase.removeChannel(activeChannel);
+    };
+  }, [userId, showToast]);
 
   const byBucket = useMemo(() => {
     const map: Record<Segment, ApplicationRow[]> = {
