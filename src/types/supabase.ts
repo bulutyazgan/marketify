@@ -874,6 +874,14 @@ export type Database = {
           video_url: string
         }[]
       }
+      lister_dashboard_counts: {
+        Args: never
+        Returns: {
+          active_campaigns: number
+          pending_applications: number
+          pending_submissions: number
+        }[]
+      }
       manage_social_link: {
         Args: {
           p_action: string
