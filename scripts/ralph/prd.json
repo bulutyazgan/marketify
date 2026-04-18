@@ -735,8 +735,8 @@
         "Commit"
       ],
       "priority": 49,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Spec gaps (both documented in the source files): (1) Screen path — AC names app/(lister)/create/step-1.tsx; implementation uses app/(lister)/campaigns/new/step-1.tsx because US-048 already wired the dashboard FAB to that path and docs/design.md §2.3 + §3.2 put campaign-scoped flows under /(lister)/campaigns/*. (2) Persistence transport — AC names MMKV; implementation uses AsyncStorage because react-native-mmkv v4 is a Nitro module that does not load in Expo Go (Codebase Pattern #105). Both satisfy the functional intent. The wizard layout hides the lister TabBar via usePathname so the form fills the viewport; draft survives re-mount via debounced AsyncStorage writes + flush-on-unmount safeguard."
     },
     {
       "id": "US-050",

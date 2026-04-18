@@ -1,4 +1,4 @@
-import { Redirect, Slot } from 'expo-router';
+import { Redirect, Slot, usePathname } from 'expo-router';
 import { Building2, Inbox, LayoutDashboard, Megaphone } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 import { TabBar, type TabDef } from '@/components/shared/TabBar';
@@ -43,14 +43,20 @@ const LISTER_TABS: TabDef[] = [
 
 export default function ListerLayout() {
   const { role } = useAuth();
+  const pathname = usePathname();
   if (role !== 'lister') return <Redirect href="/(auth)" />;
+
+  // Hide the tab bar when the user is inside the campaign-creation wizard
+  // (US-049+). Route-group parens are stripped from the URL, so
+  // `/(lister)/campaigns/new/step-1` appears here as `/campaigns/new/step-1`.
+  const hideTabBar = pathname.startsWith('/campaigns/new');
 
   return (
     <View style={styles.root}>
       <View style={styles.content}>
         <Slot />
       </View>
-      <TabBar tabs={LISTER_TABS} />
+      {hideTabBar ? null : <TabBar tabs={LISTER_TABS} />}
     </View>
   );
 }
