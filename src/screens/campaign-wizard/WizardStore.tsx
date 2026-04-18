@@ -68,6 +68,14 @@ type WizardContextValue = {
   draft: WizardDraft;
   hydrated: boolean;
   setField: <K extends keyof WizardDraft>(key: K, value: WizardDraft[K]) => void;
+  // Functional updater for fields whose next value depends on the previous —
+  // callers that close over `draft.<key>` in rapid-fire handlers (e.g. "add row
+  // to preConditions" pressed twice before a re-render) would otherwise drop
+  // writes because the captured snapshot is stale.
+  updateField: <K extends keyof WizardDraft>(
+    key: K,
+    updater: (prev: WizardDraft[K]) => WizardDraft[K],
+  ) => void;
   setPartial: (patch: Partial<WizardDraft>) => void;
   resetDraft: () => Promise<void>;
 };
@@ -159,6 +167,20 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     [schedulePersist],
   );
 
+  const updateField = useCallback(
+    <K extends keyof WizardDraft>(
+      key: K,
+      updater: (prev: WizardDraft[K]) => WizardDraft[K],
+    ) => {
+      setDraft((prev) => {
+        const next = { ...prev, [key]: updater(prev[key]) };
+        schedulePersist(next);
+        return next;
+      });
+    },
+    [schedulePersist],
+  );
+
   const setPartial = useCallback(
     (patch: Partial<WizardDraft>) => {
       setDraft((prev) => {
@@ -180,8 +202,8 @@ export function WizardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<WizardContextValue>(
-    () => ({ draft, hydrated, setField, setPartial, resetDraft }),
-    [draft, hydrated, setField, setPartial, resetDraft],
+    () => ({ draft, hydrated, setField, updateField, setPartial, resetDraft }),
+    [draft, hydrated, setField, updateField, setPartial, resetDraft],
   );
 
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;
