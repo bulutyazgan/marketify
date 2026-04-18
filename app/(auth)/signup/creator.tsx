@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { ButtonPrimary } from '@/components/primitives/Button';
@@ -192,6 +194,11 @@ export default function SignupCreator() {
     }
   }, [username, tiktok, instagram, signIn, showToast, router]);
 
+  const onBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(auth)');
+  }, [router]);
+
   if (submitting) {
     return <PullingStatsState tiktok={stripAt(tiktok)} instagram={stripAt(instagram)} />;
   }
@@ -206,6 +213,17 @@ export default function SignupCreator() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          <Pressable
+            onPress={onBack}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to role picker"
+            testID="creator-signup-back"
+            style={styles.backBtn}
+          >
+            <ChevronLeft size={24} color={colors.ink} />
+          </Pressable>
+
           <View style={styles.header}>
             <Text style={[textStyles.display, styles.title]}>Creator signup</Text>
             <Text style={[textStyles.body, styles.subtitle]}>
@@ -384,6 +402,11 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.sm,
     paddingTop: spacing.base,
+  },
+  backBtn: {
+    alignSelf: 'flex-start',
+    padding: spacing.xs,
+    marginLeft: -spacing.xs,
   },
   title: { color: colors.ink },
   subtitle: { color: colors.ink70 },
