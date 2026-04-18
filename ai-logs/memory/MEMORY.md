@@ -1,0 +1,4 @@
+- [Marketify project](project_marketify.md) — mobile marketplace MVP, Apify-powered metrics, no payments in v1, three canonical spec docs in `docs/`
+- [Marketify Ralph autonomous loop](project_ralph_loop.md) — `scripts/ralph/` setup, 65 stories, Claude Code mode with mobile-mcp + Supabase MCP + code-reviewer subagent
+- [Ralph monitoring reply cadence](feedback_ralph_monitoring_cadence.md) — batch routine acknowledgments to ~1x per 30s during loop monitoring, no per-event replies
+- [Ralph monitoring scope](feedback_ralph_monitoring_scope.md) — observation-only; never restart `ralph.sh` or edit the loop driver, even in auto mode after long idles

@@ -1,0 +1,179 @@
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-4---
+supabase/migrations/20260417150000_us_010_cascade_trigger.sql-5--- BEFORE UPDATE on public.listings:
+supabase/migrations/20260417150000_us_010_cascade_trigger.sql:6:--   * Detects scalar edits (price_cents, currency, max_submissions) via old/new diff.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-7---   * Detects conditions / sample_videos edits via the ephemeral `version_bump_reason`
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-8---     column, set-and-reset by app_private.request_listing_version_bump before the edge
+--
+supabase/migrations/20260417150000_us_010_cascade_trigger.sql-44-  changed_fields    text[] := array[]::text[];
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-45-begin
+supabase/migrations/20260417150000_us_010_cascade_trigger.sql:46:  if old.price_cents is distinct from new.price_cents then
+supabase/migrations/20260417150000_us_010_cascade_trigger.sql:47:    changed_fields := changed_fields || 'price_cents';
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-48-  end if;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-49-  if old.currency is distinct from new.currency then
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-69-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-70-    insert into public.listing_versions (
+supabase/migrations/20260417150000_us_010_cascade_trigger.sql:71:      listing_id, version_number, price_cents, currency, max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-72-      snapshot, previous_version_id, changed_fields
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-73-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-74-    values (
+supabase/migrations/20260417150000_us_010_cascade_trigger.sql:75:      new.id, new.version_number, new.price_cents, new.currency, new.max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-76-      to_jsonb(new), prev_version_id, changed_fields
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150000_us_010_cascade_trigger.sql-77-    )
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-15-  description                       text,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-16-  category                          text not null default 'other',
+supabase/migrations/20260417100000_us_005_listing_tables.sql:17:  price_cents                       integer not null check (price_cents >= 0),
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-18-  currency                          text not null default 'USD',
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-19-  max_submissions                   integer,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-40-  on public.listings (min_followers_instagram) where status = 'active';
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-41-create index listings_category_price_idx
+supabase/migrations/20260417100000_us_005_listing_tables.sql:42:  on public.listings (category, price_cents) where status = 'active';
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-43-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-44--- =========================================================
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-49-  listing_id          uuid not null references public.listings(id) on delete cascade,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-50-  version_number      integer not null,
+supabase/migrations/20260417100000_us_005_listing_tables.sql:51:  price_cents         integer not null,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-52-  currency            text not null,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417100000_us_005_listing_tables.sql-53-  max_submissions     integer,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-47-    id, lister_id, status,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-48-    title, description, category,
+supabase/migrations/20260417170000_us_012_seed.sql:49:    price_cents, currency, max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-50-    min_followers_tiktok, min_followers_instagram,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-51-    published_at
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-62-  insert into public.listing_versions (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-63-    id, listing_id, version_number,
+supabase/migrations/20260417170000_us_012_seed.sql:64:    price_cents, currency, max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-65-    snapshot, changed_fields
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-66-  ) values (
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-69-    jsonb_build_object(
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-70-      'title',           'Promote Acme Headphones',
+supabase/migrations/20260417170000_us_012_seed.sql:71:      'price_cents',     15000,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-72-      'currency',        'USD',
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-73-      'max_submissions', 10
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql-24-  id                       uuid,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql-25-  title                    text,
+supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql:26:  price_cents              integer,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql-27-  currency                 text,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql-28-  lister_handle            text,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql-38-  select l.id,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql-39-         l.title,
+supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql:40:         l.price_cents,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql-41-         l.currency,
+supabase/migrations/20260418030000_us_038_list_discover_feed_rpc.sql-42-         u.username::text as lister_handle,
+--
+supabase/migrations/20260417150100_us_010_fix_array_append.sql-1--- US-010 fix: bump_listing_version crashed at runtime with
+supabase/migrations/20260417150100_us_010_fix_array_append.sql:2:--   "ERROR 22P02: malformed array literal: 'price_cents'"
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-3--- because `text[] || 'literal'` inside a function with `set search_path = ''`
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-4--- resolves to the `anyarray || anyarray` operator (Postgres picks it for
+--
+supabase/migrations/20260417150100_us_010_fix_array_append.sql-22-  changed_fields    text[] := array[]::text[];
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-23-begin
+supabase/migrations/20260417150100_us_010_fix_array_append.sql:24:  if old.price_cents is distinct from new.price_cents then
+supabase/migrations/20260417150100_us_010_fix_array_append.sql:25:    changed_fields := changed_fields || 'price_cents'::text;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-26-  end if;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-27-  if old.currency is distinct from new.currency then
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-44-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-45-    insert into public.listing_versions (
+supabase/migrations/20260417150100_us_010_fix_array_append.sql:46:      listing_id, version_number, price_cents, currency, max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-47-      snapshot, previous_version_id, changed_fields
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-48-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-49-    values (
+supabase/migrations/20260417150100_us_010_fix_array_append.sql:50:      new.id, new.version_number, new.price_cents, new.currency, new.max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-51-      to_jsonb(new), prev_version_id, changed_fields
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417150100_us_010_fix_array_append.sql-52-    )
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql-16-  id                       uuid,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql-17-  title                    text,
+supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql:18:  price_cents              integer,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql-19-  currency                 text,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql-20-  lister_handle            text,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql-30-  select l.id,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql-31-         l.title,
+supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql:32:         l.price_cents,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql-33-         l.currency,
+supabase/migrations/20260418030100_us_038_discover_feed_null_threshold_semantics.sql-34-         u.username::text as lister_handle,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-18-    id, lister_id, status,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-19-    title, description, category,
+supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql:20:    price_cents, currency, max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-21-    min_followers_tiktok, min_followers_instagram,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-22-    published_at
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-33-  insert into public.listing_versions (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-34-    id, listing_id, version_number,
+supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql:35:    price_cents, currency, max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-36-    snapshot, changed_fields
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-37-  ) values (
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-40-    jsonb_build_object(
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-41-      'title',           'Mega-Influencer Luxe Launch',
+supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql:42:      'price_cents',     250000,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-43-      'currency',        'USD',
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417260000_us_040_seed_ineligible_listing.sql-44-      'max_submissions', 3
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-21---   title — current title (listings.title, not the version snapshot; both
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-22---     stay in sync via the bump trigger)
+supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql:23:--   price_cents, currency — for CampaignCard footer
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-24---   min_followers_tiktok, min_followers_instagram — cache columns populated
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-25---     by the §15b threshold-refresh trigger; null when no threshold is set
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-43-  status                    public.listing_status,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-44-  title                     text,
+supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql:45:  price_cents               integer,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-46-  currency                  text,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-47-  min_followers_tiktok      integer,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-60-         l.status,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-61-         l.title,
+supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql:62:         l.price_cents,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-63-         l.currency,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418070000_us_054_list_my_campaigns_rpc.sql-64-         l.min_followers_tiktok,
+--
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-10---     title:            text,
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-11---     description:      text,
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql:12:--     price_cents:      int,
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-13---     currency:         text,
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-14---     max_submissions:  int | null,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-73-  v_platform           public.platform;
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-74-  v_sort               smallint := 0;
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql:75:  v_price_cents        integer;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-76-  v_currency           text;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-77-  v_max_submissions    integer;
+--
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-83-  v_title           := p_payload ->> 'title';
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-84-  v_description     := p_payload ->> 'description';
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql:85:  v_price_cents     := (p_payload ->> 'price_cents')::integer;
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-86-  v_currency        := p_payload ->> 'currency';
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-87-  v_max_submissions := nullif(p_payload ->> 'max_submissions', '')::integer;
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-106-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-107-  insert into public.listings (
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql:108:    lister_id, status, title, description, price_cents, currency,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-109-    max_submissions, min_followers_tiktok, min_followers_instagram,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-110-    published_at
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-112-    p_lister_id,
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-113-    'active'::public.listing_status,
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql:114:    v_title, v_description, v_price_cents, v_currency,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-115-    v_max_submissions, v_min_tt, v_min_ig,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-116-    now()
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-119-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-120-  insert into public.listing_versions (
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql:121:    listing_id, version_number, price_cents, currency, max_submissions,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-122-    snapshot, previous_version_id, changed_fields
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-123-  )
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql:124:  select v_listing_id, 1, v_price_cents, v_currency, v_max_submissions,
+supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-125-         to_jsonb(l.*), null, array[]::text[]
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260418060000_us_053_create_listing_rpc.sql-126-    from public.listings l

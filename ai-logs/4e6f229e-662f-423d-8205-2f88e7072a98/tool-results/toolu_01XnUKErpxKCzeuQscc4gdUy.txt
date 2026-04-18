@@ -1,0 +1,230 @@
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-268-            Step 5 of 5
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-269-          </Text>
+app/(lister)/campaigns/new/step-5.tsx:270:          <Text style={[textStyles.display, styles.title]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-271-            Review & publish
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-272-          </Text>
+app/(lister)/campaigns/new/step-5.tsx:273:          <Text style={[textStyles.body, styles.subtitle]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-274-            Here&apos;s what creators will see when they open your campaign.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-275-          </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-277-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-278-        <View style={[styles.card, shadows.hard]} testID="wizard-step5-basics">
+app/(lister)/campaigns/new/step-5.tsx:279:          <Text style={[textStyles.caption, styles.sectionLabel]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-280-            Basics
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-281-          </Text>
+app/(lister)/campaigns/new/step-5.tsx:282:          <Text style={[textStyles.display, styles.bigTitle]} maxFontSizeMultiplier={1.3}>
+app/(lister)/campaigns/new/step-5.tsx-283-            {draft.title.trim().length > 0 ? draft.title : 'Untitled campaign'}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-284-          </Text>
+app/(lister)/campaigns/new/step-5.tsx:285:          <Text style={[textStyles.body, styles.descriptionText]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-286-            {draft.description.trim().length > 0
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-287-              ? draft.description
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-293-                Price
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-294-              </Text>
+app/(lister)/campaigns/new/step-5.tsx:295:              <Text style={[textStyles.body, styles.metaValue]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-296-                {formatPrice(draft.priceCents, draft.currency)}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-297-              </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-301-                Currency
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-302-              </Text>
+app/(lister)/campaigns/new/step-5.tsx:303:              <Text style={[textStyles.body, styles.metaValue]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-304-                {draft.currency}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-305-              </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-309-                Max submissions
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-310-              </Text>
+app/(lister)/campaigns/new/step-5.tsx:311:              <Text style={[textStyles.body, styles.metaValue]} maxFontSizeMultiplier={1.3}>
+app/(lister)/campaigns/new/step-5.tsx-312-                {draft.maxSubmissions === null ? 'No cap' : String(draft.maxSubmissions)}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-313-              </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-317-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-318-        <View style={[styles.card, shadows.hard]} testID="wizard-step5-pre">
+app/(lister)/campaigns/new/step-5.tsx:319:          <Text style={[textStyles.caption, styles.sectionLabel]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-320-            Who can apply
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-321-          </Text>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-322-          {draft.preConditions.length === 0 ? (
+app/(lister)/campaigns/new/step-5.tsx:323:            <Text style={[textStyles.body, styles.muted]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-324-              Open to anyone.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-325-            </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-331-                testID={`wizard-step5-pre-${index}`}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-332-              >
+app/(lister)/campaigns/new/step-5.tsx:333:                <Text style={[textStyles.body, styles.rulePlatform]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-334-                  {PLATFORM_LABEL[row.platform]}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-335-                </Text>
+app/(lister)/campaigns/new/step-5.tsx:336:                <Text style={[textStyles.body, styles.ruleText]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-337-                  {`${METRIC_LABEL[row.metric]} \u2265 ${formatThreshold(row.threshold)}`}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-338-                </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-343-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-344-        <View style={[styles.card, shadows.hard]} testID="wizard-step5-post">
+app/(lister)/campaigns/new/step-5.tsx:345:          <Text style={[textStyles.caption, styles.sectionLabel]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-346-            Content rules
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-347-          </Text>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-348-          {draft.postConditions.length === 0 ? (
+app/(lister)/campaigns/new/step-5.tsx:349:            <Text style={[textStyles.body, styles.muted]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-350-              No content rules.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-351-            </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-357-                testID={`wizard-step5-post-${index}`}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-358-              >
+app/(lister)/campaigns/new/step-5.tsx:359:                <Text style={[textStyles.body, styles.bullet]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-360-                  {'\u2022'}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-361-                </Text>
+app/(lister)/campaigns/new/step-5.tsx:362:                <Text style={[textStyles.body, styles.bulletText]} maxFontSizeMultiplier={1.3}>
+app/(lister)/campaigns/new/step-5.tsx-363-                  {row.text.trim().length > 0 ? row.text : '(empty rule)'}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-364-                </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-369-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-370-        <View style={[styles.card, shadows.hard]} testID="wizard-step5-samples">
+app/(lister)/campaigns/new/step-5.tsx:371:          <Text style={[textStyles.caption, styles.sectionLabel]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-372-            Sample videos
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-373-          </Text>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-374-          {visibleSampleUrls.length === 0 ? (
+app/(lister)/campaigns/new/step-5.tsx:375:            <Text style={[textStyles.body, styles.muted]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-376-              No samples.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-377-            </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-395-                  <Text
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-396-                    style={[textStyles.body, styles.sampleUrl]}
+app/(lister)/campaigns/new/step-5.tsx:397:                    maxFontSizeMultiplier={1.3}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-398-                    numberOfLines={2}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-5.tsx-399-                  >
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-113-              Step 4 of 5
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-114-            </Text>
+app/(lister)/campaigns/new/step-4.tsx:115:            <Text style={[textStyles.display, styles.title]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-116-              Samples & limits
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-117-            </Text>
+app/(lister)/campaigns/new/step-4.tsx:118:            <Text style={[textStyles.body, styles.subtitle]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-119-              Reference videos creators should match, and a cap on approved submissions.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-120-            </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-122-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-123-          <View style={styles.section}>
+app/(lister)/campaigns/new/step-4.tsx:124:            <Text style={[textStyles.caption, styles.sectionLabel]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-125-              Sample videos
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-126-            </Text>
+app/(lister)/campaigns/new/step-4.tsx:127:            <Text style={[textStyles.body, styles.sectionHint]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-128-              TikTok or Instagram URLs. Optional.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-129-            </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-143-              ))}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-144-              {draft.sampleUrls.length === 0 ? (
+app/(lister)/campaigns/new/step-4.tsx:145:                <Text style={[textStyles.body, styles.emptyHint]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-146-                  No samples yet. Add one below.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-147-                </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-157-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-158-          <View style={styles.section}>
+app/(lister)/campaigns/new/step-4.tsx:159:            <Text style={[textStyles.caption, styles.sectionLabel]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-160-              Max submissions
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-161-            </Text>
+app/(lister)/campaigns/new/step-4.tsx:162:            <Text style={[textStyles.body, styles.sectionHint]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-163-              How many creators can be approved. Leave empty for no cap.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-164-            </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-218-    <View style={[styles.card, shadows.hard]} testID={`wizard-step4-row-${index}`}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-219-      <View style={styles.cardHeader}>
+app/(lister)/campaigns/new/step-4.tsx:220:        <Text style={[textStyles.caption, styles.cardTitle]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-221-          {`${platformLabel} ${index + 1}`}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-222-        </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-256-        <Text
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-257-          style={[textStyles.caption, styles.errorText]}
+app/(lister)/campaigns/new/step-4.tsx:258:          maxFontSizeMultiplier={1.3}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-259-          testID={`wizard-step4-row-${index}-error`}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-4.tsx-260-        >
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-103-              Step 3 of 5
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-104-            </Text>
+app/(lister)/campaigns/new/step-3.tsx:105:            <Text style={[textStyles.display, styles.title]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-106-              Content rules
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-107-            </Text>
+app/(lister)/campaigns/new/step-3.tsx:108:            <Text style={[textStyles.body, styles.subtitle]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-109-              Rules creators must self-affirm before submitting. Leave empty to set no rules.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-110-            </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-122-            ))}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-123-            {draft.postConditions.length === 0 ? (
+app/(lister)/campaigns/new/step-3.tsx:124:              <Text style={[textStyles.body, styles.emptyHint]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-125-                No rules yet. Add one below.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-126-              </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-163-    <View style={[styles.card, shadows.hard]} testID={`wizard-step3-row-${index}`}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-164-      <View style={styles.cardHeader}>
+app/(lister)/campaigns/new/step-3.tsx:165:        <Text style={[textStyles.caption, styles.cardTitle]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-166-          Rule {index + 1}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-167-        </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-185-          multiline
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-186-          autoCapitalize="sentences"
+app/(lister)/campaigns/new/step-3.tsx:187:          maxFontSizeMultiplier={1.3}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-188-          style={[textStyles.body, styles.input]}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-3.tsx-189-          accessibilityLabel={`Rule ${index + 1} text`}
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-122-              Step 2 of 5
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-123-            </Text>
+app/(lister)/campaigns/new/step-2.tsx:124:            <Text style={[textStyles.display, styles.title]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-125-              Who can apply?
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-126-            </Text>
+app/(lister)/campaigns/new/step-2.tsx:127:            <Text style={[textStyles.body, styles.subtitle]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-128-              Set eligibility rules for creators. Leave empty to accept anyone.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-129-            </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-141-            ))}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-142-            {draft.preConditions.length === 0 ? (
+app/(lister)/campaigns/new/step-2.tsx:143:              <Text style={[textStyles.body, styles.emptyHint]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-144-                No rules yet. Add one below.
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-145-              </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-196-    <View style={[styles.card, shadows.hard]} testID={`wizard-step2-row-${index}`}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-197-      <View style={styles.cardHeader}>
+app/(lister)/campaigns/new/step-2.tsx:198:        <Text style={[textStyles.caption, styles.cardTitle]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-199-          Rule {index + 1}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-200-        </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-211-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-212-      <View style={styles.group}>
+app/(lister)/campaigns/new/step-2.tsx:213:        <Text style={[textStyles.caption, styles.label]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-214-          Platform
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-215-        </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-229-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-230-      <View style={styles.group}>
+app/(lister)/campaigns/new/step-2.tsx:231:        <Text style={[textStyles.caption, styles.label]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-232-          Metric
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-2.tsx-233-        </Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-1.tsx-132-              Step 1 of 5
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-1.tsx-133-            </Text>
+app/(lister)/campaigns/new/step-1.tsx:134:            <Text style={[textStyles.display, styles.title]}>New campaign</Text>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-1.tsx-135-            <Text style={[textStyles.body, styles.subtitle]}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns/new/step-1.tsx-136-              The basics creators see first.
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns.tsx-179-        }
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns.tsx-180-      >
+app/(lister)/campaigns.tsx:181:        <Text style={[textStyles.display, styles.header]}>Campaigns</Text>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns.tsx-182-        <SegmentControl active={segment} counts={counts} onChange={setSegment} />
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/campaigns.tsx-183-
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/profile.tsx-58-      <ScrollView contentContainerStyle={styles.scrollContent}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/profile.tsx-59-        <View style={styles.header}>
+app/(lister)/profile.tsx:60:          <Text style={[textStyles.display, { color: colors.ink }]}>Profile</Text>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/profile.tsx-61-          {user ? (
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/profile.tsx-62-            <Text style={[textStyles.mono, styles.usernameRow]}>@{user.username}</Text>
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-98-        }
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-99-      >
+app/(lister)/dashboard.tsx:100:        <Text style={[textStyles.display, styles.header]}>Home</Text>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-101-
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-102-        {loading ? (
+--
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-152-      testID={testID}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-153-    >
+app/(lister)/dashboard.tsx:154:      <Text style={[textStyles.display, styles.tileValue]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-155-        {value}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-156-      </Text>
+app/(lister)/dashboard.tsx:157:      <Text style={[textStyles.caption, styles.tileLabel]} maxFontSizeMultiplier={1.3}>
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-158-        {label}
+/Users/bulutyazgan/Desktop/marketify/app/(lister)/dashboard.tsx-159-      </Text>

@@ -1,0 +1,236 @@
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-52-alter table public.lister_profiles    enable row level security;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-53-alter table public.social_links       enable row level security;
+supabase/migrations/20260417140000_us_009_rls_policies.sql:54:alter table public.metric_snapshots   enable row level security;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-55-alter table public.listings           enable row level security;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-56-alter table public.listing_versions   enable row level security;
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-119-  );
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-120-
+supabase/migrations/20260417140000_us_009_rls_policies.sql:121:-- ---------------- metric_snapshots ----------------
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-122--- Only is_latest + status='fresh' rows are readable; history is service-role only.
+supabase/migrations/20260417140000_us_009_rls_policies.sql:123:drop policy if exists metric_snapshots_self_read on public.metric_snapshots;
+supabase/migrations/20260417140000_us_009_rls_policies.sql:124:create policy metric_snapshots_self_read on public.metric_snapshots for select
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-125-  using (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-126-    is_latest and status = 'fresh'
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-127-    and exists (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-128-      select 1 from public.social_links sl
+supabase/migrations/20260417140000_us_009_rls_policies.sql:129:      where sl.id = public.metric_snapshots.social_link_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-130-        and sl.user_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-131-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-132-  );
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-133-
+supabase/migrations/20260417140000_us_009_rls_policies.sql:134:drop policy if exists metric_snapshots_lister_read on public.metric_snapshots;
+supabase/migrations/20260417140000_us_009_rls_policies.sql:135:create policy metric_snapshots_lister_read on public.metric_snapshots for select
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-136-  using (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-137-    is_latest and status = 'fresh'
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-141-      join public.applications a on a.creator_id = sl.user_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-142-      join public.listings l on l.id = a.listing_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:143:      where sl.id = public.metric_snapshots.social_link_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-144-        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-145-    )
+--
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:1:-- US-007: metric_snapshots + denormalization trigger.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-2---
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-3--- Per docs/tech-architecture.md §4.7 block 6 (lines 564-597) and the trigger
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-5---
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql-6--- Three pieces:
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:7:--   1. public.metric_snapshots — historized rows, one per Apify run.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-8---   2. app_private.check_metric_snapshot_coherence — BEFORE INSERT/UPDATE
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-9---      trigger ensuring scrape_mode matches the linked social_link.platform.
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-19-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-20--- =========================================================
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:21:-- 1. metric_snapshots table
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-22--- =========================================================
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:23:create table public.metric_snapshots (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-24-  id                uuid primary key default gen_random_uuid(),
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-25-  social_link_id    uuid not null references public.social_links(id) on delete cascade,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-39-);
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-40-
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:41:create index on public.metric_snapshots (social_link_id, fetched_at desc);
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-42-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-43--- Only one "latest" snapshot per (social_link, scrape_mode); IG has at most two.
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:44:create unique index metric_snapshots_latest
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:45:  on public.metric_snapshots (social_link_id, scrape_mode) where is_latest;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-46-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-47--- Idempotency for webhook redeliveries — same Apify run never inserts twice.
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:48:create unique index metric_snapshots_run_uniq
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:49:  on public.metric_snapshots (apify_run_id) where apify_run_id is not null;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-50-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-51--- Janitor cron `fail-stuck-refreshing` scans here. Partial keeps it sub-ms.
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:52:create index metric_snapshots_stuck_idx
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:53:  on public.metric_snapshots (fetched_at) where status = 'refreshing';
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-54-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-55--- =========================================================
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-71-end $$;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-72-
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:73:create trigger trg_metric_snapshots_coherence
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:74:  before insert or update of scrape_mode, social_link_id on public.metric_snapshots
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-75-  for each row execute function app_private.check_metric_snapshot_coherence();
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-76-
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-96-  perform pg_advisory_xact_lock(lock_key);
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-97-
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:98:  update public.metric_snapshots
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-99-     set is_latest = false
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-100-   where social_link_id = new.social_link_id
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-137-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-138-create trigger trg_denorm_metrics
+supabase/migrations/20260417120000_us_007_metric_snapshots.sql:139:  before insert on public.metric_snapshots
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120000_us_007_metric_snapshots.sql-140-  for each row execute function app_private.denorm_metrics();
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120100_us_007_pin_function_search_path.sql-4--- app_private.denorm_metrics and app_private.check_metric_snapshot_coherence.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120100_us_007_pin_function_search_path.sql-5--- denorm_metrics is SECURITY DEFINER, so a caller-controlled search_path could
+supabase/migrations/20260417120100_us_007_pin_function_search_path.sql:6:-- shadow public.creator_profiles or public.metric_snapshots and divert writes.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120100_us_007_pin_function_search_path.sql-7--- Both functions already qualify every reference, so an empty search_path is
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120100_us_007_pin_function_search_path.sql-8--- safe and clears the advisor.
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120300_us_007_fix_function_refs.sql-49-  perform pg_catalog.pg_advisory_xact_lock(lock_key);
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120300_us_007_fix_function_refs.sql-50-
+supabase/migrations/20260417120300_us_007_fix_function_refs.sql:51:  update public.metric_snapshots
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120300_us_007_fix_function_refs.sql-52-     set is_latest = false
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120300_us_007_fix_function_refs.sql-53-   where social_link_id = new.social_link_id
+--
+supabase/migrations/20260417163000_us_011_cron_jobs.sql:1:-- US-011: Schedule the recurring pg_cron jobs that keep metric_snapshots fresh.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417163000_us_011_cron_jobs.sql-2---
+supabase/migrations/20260417163000_us_011_cron_jobs.sql-3--- Two jobs land here:
+supabase/migrations/20260417163000_us_011_cron_jobs.sql:4:--   1. `mark-metrics-stale` (hourly) — flips `metric_snapshots.status` from
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417163000_us_011_cron_jobs.sql-5---      'fresh' → 'stale' once a snapshot is older than 24h. Verbatim from
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417163000_us_011_cron_jobs.sql-6---      docs/tech-architecture.md §16 (lines 1505-1509). Surfaces the
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417163000_us_011_cron_jobs.sql-49-  '0 * * * *',
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417163000_us_011_cron_jobs.sql-50-  $$
+supabase/migrations/20260417163000_us_011_cron_jobs.sql:51:    update public.metric_snapshots
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417163000_us_011_cron_jobs.sql-52-       set status = 'stale'
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417163000_us_011_cron_jobs.sql-53-     where status = 'fresh'
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120200_us_007_qualify_function_refs.sql-52-  perform pg_catalog.pg_advisory_xact_lock(lock_key);
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120200_us_007_qualify_function_refs.sql-53-
+supabase/migrations/20260417120200_us_007_qualify_function_refs.sql:54:  update public.metric_snapshots
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120200_us_007_qualify_function_refs.sql-55-     set is_latest = false
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417120200_us_007_qualify_function_refs.sql-56-   where social_link_id = new.social_link_id
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-1--- US-012 — Dev seed data per docs/tech-architecture.md §4.7.
+supabase/migrations/20260417170000_us_012_seed.sql-2--- Creates: 1 lister, 1 active listing (v1 + pre/post conditions + sample video),
+supabase/migrations/20260417170000_us_012_seed.sql:3:-- 1 creator with tiktok + instagram handles, and one metric_snapshots row for
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-4--- each of the three scrape_modes (tiktok_profile, ig_details, ig_posts).
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-5--- The app_private.denorm_metrics BEFORE-INSERT trigger (US-007) mirrors the
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-105-  );
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-106-
+supabase/migrations/20260417170000_us_012_seed.sql:107:  -- ---- metric_snapshots (all three scrape_modes) -----------------------
+supabase/migrations/20260417170000_us_012_seed.sql-108-  -- Triggers fire on INSERT: coherence check + denorm_metrics mirrors into
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-109-  -- creator_profiles. The three rows below populate the full denorm column
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-110-  -- set (tiktok_*, instagram_follower_count, instagram_media_count,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-111-  -- instagram_avg_views_last_10, metrics_fetched_at).
+supabase/migrations/20260417170000_us_012_seed.sql:112:  insert into public.metric_snapshots (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-113-    social_link_id, scrape_mode, status,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417170000_us_012_seed.sql-114-    follower_count, avg_views_last_10, total_likes, video_count, is_verified,
+--
+supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql:1:-- US-035 — widen metric_snapshots_self_read so creators can see their own
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-2--- is_latest row when it has been flipped to status='stale' by the hourly
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-3--- `mark-metrics-stale` cron (us_011).
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-16--- need a successful eligibility snapshot for their applicant reviews.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-17-
+supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql:18:drop policy if exists metric_snapshots_self_read on public.metric_snapshots;
+supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql:19:create policy metric_snapshots_self_read on public.metric_snapshots for select
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-20-  using (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-21-    is_latest and status in ('fresh', 'stale')
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-22-    and exists (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-23-      select 1 from public.social_links sl
+supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql:24:      where sl.id = public.metric_snapshots.social_link_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-25-        and sl.user_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-26-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-27-  );
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-28-
+supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql:29:comment on policy metric_snapshots_self_read on public.metric_snapshots is
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-30-  'Creator self-read of own is_latest snapshots (fresh + stale). Widened in us_035 so the Profile screen can surface the Stale chip — the hourly mark-metrics-stale cron flips status from fresh to stale in place on the same is_latest row.';
+--
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-11---   {"inserted": false, "duplicate": true}                              on ON CONFLICT no-op
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-12---
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql:13:-- Behavior: Inserts one public.metric_snapshots row keyed on apify_run_id with
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql:14:--   scrape_mode='ig_details'. The partial unique index metric_snapshots_run_uniq
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-15---   (US-007) enforces webhook-delivery idempotency — a second webhook carrying
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-16---   the same run_id hits ON CONFLICT DO NOTHING and returns duplicate=true.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-17---
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql:18:--   ig_details owns these metric_snapshots columns per
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-19---   docs/tech-architecture.md §4.7 lines 576-581 comments:
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-20---     follower_count, following_count, video_count (= postsCount),
+--
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-26---   into public.creator_profiles: instagram_follower_count, instagram_media_count,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-27---   metrics_fetched_at (guarded with greatest()). is_verified and following_count
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql:28:--   remain forensic-only on metric_snapshots — there is no instagram_is_verified
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-29---   or instagram_following_count denorm column in v1 (spec §4.7 creator_profiles
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-30---   block). On a 'failed'-status row, denorm_metrics short-circuits on
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-35---
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-36--- Spec gap handoff — US-020 pre-refreshing rows:
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql:37:--   US-020 will pre-create metric_snapshots rows in status='refreshing' before
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-38---   the webhook arrives, so run_id is attached at dispatch time. This RPC does
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-39---   NOT currently detect a pre-existing 'refreshing' row — ON CONFLICT DO
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-69-  end if;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-70-
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql:71:  insert into public.metric_snapshots (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-72-    social_link_id,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-73-    scrape_mode,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-126-  text, uuid, public.metric_status, timestamptz,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql-127-  int, int, int, boolean, jsonb, text
+supabase/migrations/20260417200000_us_017_apify_webhook_persist_ig_details_rpc.sql:128:) is 'US-017 webhook persistence RPC for ig_details scrape_mode. Idempotent via partial unique index metric_snapshots_run_uniq on apify_run_id. Returns jsonb {inserted, duplicate, snapshot_id?}.';
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417090000_us_004_identity_tables.sql-22-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417090000_us_004_identity_tables.sql-23--- ---- creator_profiles ---------------------------------------------------
+supabase/migrations/20260417090000_us_004_identity_tables.sql:24:-- Denormalized metric columns mirror the latest public.metric_snapshots rows
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417090000_us_004_identity_tables.sql-25--- per scrape_mode; the mirroring trigger is installed in us_007.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417090000_us_004_identity_tables.sql-26-create table public.creator_profiles (
+--
+supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-12---   {"inserted": false, "duplicate": true}                              on ON CONFLICT no-op
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-13---
+supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql:14:-- Behavior: Inserts one public.metric_snapshots row keyed on apify_run_id.
+supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql:15:--   The partial unique index metric_snapshots_run_uniq (US-007) enforces
+supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-16---   webhook-delivery idempotency: a second webhook carrying the same run_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-17---   hits ON CONFLICT DO NOTHING and returns duplicate=true.
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-28---
+supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-29--- Spec gap handoff — US-020 pre-refreshing rows:
+supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql:30:--   US-020 (auth-signup-creator Apify dispatch) will pre-create metric_snapshots
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-31---   rows in status='refreshing' before the webhook arrives, so the Apify run's
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-32---   run_id is attached from dispatch time. This RPC does NOT currently detect
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-65-  end if;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-66-
+supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql:67:  insert into public.metric_snapshots (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-68-    social_link_id,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-69-    scrape_mode,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-126-  text, uuid, public.metric_status, timestamptz,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql-127-  int, int, bigint, int, int, boolean, jsonb, text
+supabase/migrations/20260417190000_us_016_apify_webhook_persist_rpc.sql:128:) is 'US-016 webhook persistence RPC for tiktok_profile scrape_mode. Idempotent via partial unique index metric_snapshots_run_uniq on apify_run_id. Returns jsonb {inserted, duplicate, snapshot_id?}.';
+--
+supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-10---   {"inserted": false, "duplicate": true}                              on ON CONFLICT no-op
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-11---
+supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql:12:-- Behavior: Inserts one public.metric_snapshots row keyed on apify_run_id with
+supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql:13:--   scrape_mode='ig_posts'. The partial unique index metric_snapshots_run_uniq
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-14---   (US-007) enforces webhook-delivery idempotency — a second webhook carrying
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-15---   the same run_id hits ON CONFLICT DO NOTHING and returns duplicate=true.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-16---
+supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql:17:--   ig_posts owns exactly one metric_snapshots column per
+supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-18---   docs/tech-architecture.md §4.7 lines 576-581 comments:
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-19---     avg_views_last_10
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-65-  end if;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-66-
+supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql:67:  insert into public.metric_snapshots (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-68-    social_link_id,
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-69-    scrape_mode,
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-112-comment on function public.apify_webhook_persist_ig_posts(
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql-113-  text, uuid, public.metric_status, timestamptz, int, jsonb, text
+supabase/migrations/20260417210000_us_018_apify_webhook_persist_ig_posts_rpc.sql:114:) is 'US-018 webhook persistence RPC for ig_posts scrape_mode. Idempotent via partial unique index metric_snapshots_run_uniq on apify_run_id. Returns jsonb {inserted, duplicate, snapshot_id?}.';

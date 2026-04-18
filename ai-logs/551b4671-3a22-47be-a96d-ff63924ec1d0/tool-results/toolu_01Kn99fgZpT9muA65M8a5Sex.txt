@@ -1,0 +1,202 @@
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-84-**Creator**
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-85-- Handle-based signup (username + TikTok and/or Instagram handle)
+docs/product-plan.md-86-- Initial Apify scrape on sign-up (synchronous `waitSecs: 60`, falls back to webhook completion)
+docs/product-plan.md:87:- 6h-throttled manual metrics refresh + daily cron
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-88-- Campaign feed with client-side eligibility filter (`Eligible only` toggle, default on)
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-89-- Campaign detail with live eligibility evaluation
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-90-- Apply flow with server-side eligibility re-check
+--
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-107-
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-108-**Cross-cutting**
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-109-- Listing versioning + cascade trigger (Postgres trigger, §4.7)
+docs/product-plan.md:110:- Metrics staleness marker cron (hourly; surfaces "Outdated" chip after 24h)
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-111-- Realtime subscriptions (notifications, applications, submissions, metric_snapshots)
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-112-- Append-only `events` audit table
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-113-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-151-- Denormalized creator metrics on `creator_profiles` (`tiktok_follower_count`, `instagram_avg_views_last_10`, etc.) — populated by a `BEFORE INSERT` trigger on `metric_snapshots`, scoped by `scrape_mode`, serialized with `pg_advisory_xact_lock`.
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-152-- Trigger-maintained `listings.min_followers_tiktok` / `min_followers_instagram` cache columns, btree-indexed for O(log n) feed filtering. Plain `integer` columns (not `GENERATED ALWAYS AS`) because the source lives in another table.
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-153-- `metric_snapshots.scrape_mode` enum (`tiktok_profile` | `ig_details` | `ig_posts`) — lets a single Apify webhook resolve into the correct subset of denormalized fields. IG's two runs land independently and can partially succeed.
+docs/product-plan.md:154:- Manual refresh throttle: 1 per 6h per `(user, platform)` — `429` returned from edge function before any Apify call.
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-155-
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-156----
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-157-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-176-2. **Custom JWT edge function + `/auth/signup-lister`.** Listers can create accounts and receive a JWT. Round-trip tested with curl. JWT claims validated by RLS on a shared read.
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-177-3. **Apify client wrapper + webhook receiver.** Edge function `apify-core` exposes `.runTikTokProfile(handle)`, `.runInstagramDetails(handle)`, `.runInstagramPosts(handle)`. `POST /webhooks/apify` verifies the shared secret, fetches the dataset, upserts `metric_snapshots` by `apify_run_id`, branches on `scrape_mode`. Demonstrate against live Apify sandbox with two test handles.
+docs/product-plan.md-178-4. **`/auth/signup-creator` + initial scrape.** Handle-based signup inserts `users` + `creator_profiles` + `social_links` rows, then kicks the scraper runs synchronously (60s wait) and falls back to webhook completion. Demonstrate via curl: signup returns JWT; within 60s, `creator_profiles` has populated metrics; Supabase Studio shows the `metric_snapshots` rows.
+docs/product-plan.md:179:5. **Metric refresh plumbing.** `POST /metrics/refresh` with the 6h throttle + `pg_cron` daily job. Manual pull works; throttle returns `429`. Cron populates stale profiles.
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-180-6. **Design tokens + primitive component library.** Colors, typography, spacing, `ButtonPrimary`, `ButtonSecondary`, `Chip`, `StatusPill`, `CampaignCard`, `SkeletonCard`, `BottomSheet`, `Toast`. Each with a Storybook-style preview screen.
+/Users/bulutyazgan/Desktop/marketify/docs/product-plan.md-181-7. **Creator feed + eligibility filter.** Direct PostgREST query with generated-column filters. Client-side fine-grained eligibility. Pull-to-refresh.
+docs/product-plan.md-182-8. **Campaign detail + apply flow.** `GET /listings:id` edge function returns listing + conditions + live eligibility. Apply modal → `POST /applications` with server re-check. Toast on success.
+--
+docs/design.md-191-- Applications inbox empty (lister): "Waiting for creators to apply."
+docs/design.md-192-- Network error: hard-shadow card with "Can't reach servers" + "Try again".
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-193-
+docs/design.md:194:**Age-bucketed nudges for non-expiring inboxes.** Applications and submissions do not auto-expire, so an inbox is never "full" in the OS sense — but stale rows rot quietly. On inboxes where any open row is older than a threshold, the list prepends a soft-warning banner (not an empty state — the list is non-empty):
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-195-
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-196-| Inbox | Trigger | Banner copy |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-197-|---|---|---|
+--
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-307-| `dispatching` | `●` (ink), handle, trailing "queued…" |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-308-| `refreshing` | `●` (warning), handle, trailing animated pulsing `…` |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-309-| `fresh` | `●` (success), handle, trailing "✓ 18s" (elapsed time) |
+docs/design.md:310:| `failed` | `●` (danger), handle, trailing "✗ Couldn't fetch" + inline "Retry" link (respects 6h throttle) |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-311-
+docs/design.md-312-**Completion rules** (screen auto-advances based on these):
+docs/design.md-313-- **All three fresh** → 220ms soft fade → push `/(creator)/feed`. Success toast: "You're in. N campaigns match you."
+--
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-666-| State | Visual | When |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-667-|---|---|---|
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-668-| `fresh` | no chip; timestamp reads "Updated 2m ago" | last snapshot for this `scrape_mode` is `fresh` and `< 24h` old |
+docs/design.md:669:| `stale` | tiny warning-soft dot; timestamp reads "Updated 3d ago" | `fresh` but `> 24h` (auto-flipped by cron) |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-670-| `refreshing` | faint pulsing skeleton over the metric value | a webhook is outstanding |
+docs/design.md:671:| `failed` | danger-soft chip: "Couldn't refresh · Retry" | last snapshot is `failed`; tapping retries (respects 6h throttle) |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-672-
+docs/design.md-673-**Pull-to-refresh gesture** on Profile:
+docs/design.md-674-- **Pull phase:** counter above metric tiles interpolates upward; "Release to refresh".
+docs/design.md-675-- **Release phase:** all per-metric tiles owned by the platform(s) being refreshed enter `refreshing` simultaneously. Per-platform odometer only starts when that mode's webhook lands.
+docs/design.md-676-- **Partial-success phase (IG):** if `ig_details` lands first, follower count runs the odometer + delta pill; `ig_avg_views_last_10` stays in `refreshing` with its skeleton until `ig_posts` lands. If `ig_posts` fails (e.g. photo-only profile), the views tile flips to `failed` with "Not enough video content" as the specific copy (we distinguish "no videos" from "scrape error" by checking `raw_payload`).
+docs/design.md-677-- **Full-success phase:** each mode's tile runs its own odometer with bouncy spring and fades its delta pill (`+1.2K`/`-300`) for 1.5s.
+docs/design.md:678:- **Error phase:** if a manual refresh hits the 6h throttle (`429 RATE_LIMIT`), toast surfaces the exact `retry_after_sec` using a **tiered format**:
+docs/design.md-679-  - `≥ 1h`: `"Try again in Xh Ym."` (e.g. "Try again in 4h 23m.")
+docs/design.md-680-  - `60s ≤ t < 1h`: `"Try again in Xm."` (e.g. "Try again in 7m.")
+docs/design.md-681-  - `< 60s`: `"Try again in a few seconds."` (we round down aggressively here — nobody benefits from "try again in 11s")
+--
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-738-| **NotificationRow** | Inbox item | `type, title, timestamp, read, href` |
+docs/design.md-739-| **ReuseBadge** | "Also submitted to N other campaigns" chip on submission row / review sheet — surfaces cross-posting without blocking it | `count, variant: 'inline'\|'header'` |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-740-| **OverrideEligibilityDialog** | Approve-time confirmation for listers overriding a failed post-condition; renders the failed-conditions summary + required typed confirmation | `failedConditions[], onConfirm, onCancel` |
+docs/design.md:741:| **MetricStaleIndicator** | Per-metric tri-state marker attached to `MetricChip` (fresh / stale / refreshing / failed) — drives the visual in §5.4 | `state: 'fresh'\|'stale'\|'refreshing'\|'failed', retryAfterSec?, errorKind?: 'no_videos'\|'scrape_error', onRetry?` |
+docs/design.md-742-| **AddHandleSheet** | Bottom-sheet flow that adds a TikTok/IG handle inline from any surface (Campaign Detail eligibility row, Edit Handles). Owns its own state machine across `input → dispatching → scraping → (partial) → fresh \| failed` — see §4.2 | `platform: 'tiktok'\|'instagram', preFilledHandle?: string, onSuccess: (socialLinkId) => void, onCancel: () => void` |
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-743-
+/Users/bulutyazgan/Desktop/marketify/docs/design.md-744----
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-53-
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-54-| Area | Decision |
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-55-|---|---|
+docs/tech-architecture.md:56:| Events | Application approved/rejected/cancelled; submission approved/rejected; listing version changed; metrics refresh failed. |
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-57-| Channels | In-app inbox + Supabase Realtime. Push deferred to v1.1. |
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-58-| Transport | Realtime on `applications`, `submissions`, `notifications`. Poll fallback on app resume. |
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-59-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-61-
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-62-| Area | Decision |
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-63-|---|---|
+docs/tech-architecture.md:64:| Rate limits | Apify costs real money per scrape. Server-side throttle: manual refresh once per 6h per `(user, platform)`. Background refresh daily via `pg_cron` for all linked handles with `fetched_at < now() - 24h`. |
+docs/tech-architecture.md:65:| Scrape failures | `metric_snapshots.status = fresh \| stale \| refreshing \| failed`. "Outdated" badge if `fetched_at > 7d`. After 3 consecutive failed scrapes, `social_link.status = failed_fetch`, prompt creator to re-enter handle. |
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-66-| Video integrity | Validate via TikTok/IG oEmbed at submission time (`422` if 404). Nightly sweep re-validates `approved` submissions — flags but doesn't change state. |
+docs/tech-architecture.md-67-| Post-submission performance | Out of MVP. Later: an Apify actor per submitted video to pull current view count. |
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-68-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-136-(init, on link or refresh) ──apify_run_started[system]──> refreshing
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-137-refreshing ──success[system|apify_webhook]──> fresh
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-138-refreshing ──fail[system]──> failed
+docs/tech-architecture.md:139:fresh ──age > 24h[time]──> stale
+docs/tech-architecture.md:140:stale ──run_started[creator_manual | system_daily]──> refreshing
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-141-failed ──retry[system|creator]──> refreshing
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-142-```
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-143-
+docs/tech-architecture.md:144:Rule: eligibility filter uses `fresh` OR `stale`, never `failed`. UI warns if `stale`.
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-145-
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-146----
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-147-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-344-
+docs/tech-architecture.md-345-- Every actor run costs Apify credits. Published pricing at time of writing: TikTok Scraper ≈ $0.40 / 1k videos (so ~$0.004 per 10-video run), Instagram Scraper ≈ $2.30 / 1k results. Budget conservatively at ~$0.01 per TikTok refresh and ~$0.02 per IG refresh (details + 10 posts = 11 results).
+docs/tech-architecture.md-346-- **Scale math (back-of-envelope):** 10k creators × daily cron refresh ≈ $40/day TikTok-only, $200/day IG-only, $240/day fully-linked. That's ~$7.2k/month worst case. Sensitivity: cutting daily cron to every 48h halves that; capping free-tier creators to weekly refresh quarters it.
+docs/tech-architecture.md:347:- **Hard throttle:** `metrics/refresh` server-side limit 1 per 6h per `(user, platform)`. `429` returned before any Apify call.
+docs/tech-architecture.md:348:[Omitted long matching line]
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-349-- Set Apify run timeout (via `timeoutSecs` input to `.start()`) to 120s; if actor hangs, we fail-close the snapshot (`status=failed`) and retry on next cron window.
+docs/tech-architecture.md-350-- Memory: default `memoryMbytes` is fine for both actors (1024 MB); don't override.
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-351-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-408-);
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-409-create type submission_status as enum ('pending', 'approved', 'rejected');
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-410-create type social_link_status as enum ('linked', 'unlinked', 'failed_fetch');
+docs/tech-architecture.md:411:create type metric_status as enum ('fresh', 'stale', 'refreshing', 'failed');
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-412--- Which Apify actor run produced this snapshot. TikTok has one mode; IG has two (details + posts).
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-413-create type scrape_mode as enum ('tiktok_profile', 'ig_details', 'ig_posts');
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-414-create type condition_kind as enum ('pre', 'post');
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-422-create type notification_kind as enum (
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-423-  'application_approved', 'application_rejected', 'application_cancelled',
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-424-  'submission_received', 'submission_approved', 'submission_rejected',
+docs/tech-architecture.md:425:  'listing_version_changed', 'metrics_refresh_failed'
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-426-);
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-427-```
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-428-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1465---     revocations that happened during the disconnect are lost until the next
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1466---     TTL expiry. `listen_reconnected` events are logged for ops visibility.
+docs/tech-architecture.md-1467---   * Cold start: load the full set synchronously before the container accepts
+docs/tech-architecture.md:1468:--     its first request. A cold container accepting requests with a stale
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1469---     denylist is the worst case we're avoiding.
+docs/tech-architecture.md-1470---   * Query path: `if (denylist.has(jwt.session_id)) reject 401`. O(1).
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1471---
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1501--- =========================================================
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1502--- 16. Cron
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1503--- =========================================================
+docs/tech-architecture.md:1504:-- Mark snapshots stale after 24h (surfaces the "Outdated" badge in UI)
+docs/tech-architecture.md:1505:select cron.schedule('mark-metrics-stale', '0 * * * *', $$
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1506-  update public.metric_snapshots
+docs/tech-architecture.md:1507:     set status = 'stale'
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1508-   where status = 'fresh' and fetched_at < now() - interval '24 hours' and is_latest;
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1509-$$);
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1510-
+--
+docs/tech-architecture.md-1593-interface Req { session_id: string; }
+docs/tech-architecture.md-1594-interface Res { ok: true; }
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1595-```
+docs/tech-architecture.md:1596:[Omitted long matching line]
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1597-
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1598-### 5.2 Social Handles & Metrics
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1599-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1620-```
+docs/tech-architecture.md-1621-Errors: `409 LAST_LINK` (creator must keep ≥1 linked platform).
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1622-
+docs/tech-architecture.md:1623:**`POST /metrics/refresh`** — creator-triggered, rate-limited
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1624-```ts
+docs/tech-architecture.md-1625-interface Req { social_link_id: string; }
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1626-interface Res {
+--
+docs/tech-architecture.md-1629-  retry_after_sec?: number;
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1630-}
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1631-```
+docs/tech-architecture.md:1632:Side effects: check 6h throttle on `social_links.last_scrape_attempt_at`; for each scrape_mode owed by the platform, insert `metric_snapshots(status=refreshing, scrape_mode=...)` and start the matching Apify run with our webhook.
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1633-
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1634-| Platform | scrape_modes triggered | Actor runs |
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1635-|---|---|---|
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1638-
+docs/tech-architecture.md-1639-Errors: `429 RATE_LIMIT` (with `retry_after_sec`), `502 APIFY_ERROR`.
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1640-
+docs/tech-architecture.md:1641:**Internal cron-invoked function `cron-refresh-metrics`**
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1642-- Runs daily (scheduled via Supabase `pg_cron` → edge function).
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1643-- Picks up to `APIFY_DAILY_BUDGET` links with `metrics_fetched_at < now() - 24h AND status != 'failed_fetch'`.
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1644-- Fires the appropriate scrape_modes per link (TikTok=1 run, IG=2 runs). All async with our webhook.
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1648-  -- false immediately if another session holds it — the function then exits
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1649-  -- with a `cron_refresh_skipped_overlap` event (for ops visibility) and no
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1650-  -- Apify runs are queued.
+docs/tech-architecture.md:1651:  select pg_try_advisory_lock(hashtextextended('cron-refresh-metrics', 0));
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1652-  ```
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1653-  The lock auto-releases at txn end (session-scoped via `pg_advisory_lock` would leak on container crash; `pg_try_advisory_xact_lock` is safer). This guarantees at-most-one active refresh cron, regardless of how far behind the previous one ran. The 24h cadence combined with the 10-min `fail-stuck-refreshing` janitor means no single slow run can stall the pipeline indefinitely.
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1654-
+--
+docs/tech-architecture.md-1695-6. Trigger fires `denorm_metrics()` → updates only the `creator_profiles` columns owned by this `scrape_mode`. (Note: `denorm_metrics()` already short-circuits when the new row's status is not `fresh` — see §15 trigger — so the no-op guard in step 5 also keeps the denorm path clean.)
+docs/tech-architecture.md-1696-7. On failure: increment `social_links.fail_count`; if ≥3 consecutive failures across all scrape_modes → `social_links.status=failed_fetch` + notify creator. On success: reset `social_links.fail_count = 0` so the consecutive-failure counter only reflects *uninterrupted* failures.
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1697-
+docs/tech-architecture.md:1698:**IG consistency note:** Because IG needs two runs per refresh, `creator_profiles.metrics_fetched_at` will bump *twice* per refresh (once per webhook). The UI treats "fresh" as `min(metrics_fetched_at_across_modes)`. If one run fails and the other succeeds, the creator still sees a partial update — the failed mode's old value remains stale-but-shown, with a subtle warning chip. (Detail reconciled via `metric_snapshots.status` per mode.)
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1699-
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1700-### 5.4 Listings — Browse (Creator)
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1701-
+--
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1754-Server re-evaluates eligibility; notifies lister.
+docs/tech-architecture.md-1755-Errors: `403 INELIGIBLE`, `409 ALREADY_APPLIED`, `409 LISTING_NOT_ACTIVE`, `409 LISTING_VERSION_CHANGED`.
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1756-
+docs/tech-architecture.md:1757:**Concurrency contract — closes the race with `bump_listing_version`.** Without row locks, an applicant's `INSERT applications` can interleave with a lister's `UPDATE listings` that triggers the version bump + cascade-cancel, leaving a fresh `pending` row pinned to an already-stale version. The insert txn must serialize on the listing row:
+/Users/bulutyazgan/Desktop/marketify/docs/tech-architecture.md-1758-
+
+[Showing results with pagination = limit: 200]

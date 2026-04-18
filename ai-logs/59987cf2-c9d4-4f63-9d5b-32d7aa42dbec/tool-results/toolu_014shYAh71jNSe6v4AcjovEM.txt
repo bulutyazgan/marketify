@@ -1,0 +1,202 @@
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-4---
+supabase/migrations/20260417140000_us_009_rls_policies.sql-5--- Behavior:
+supabase/migrations/20260417140000_us_009_rls_policies.sql:6:--   * Per-tenant scoping via public.current_user_id() → auth.jwt() ->> 'sub'.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-7---   * RLS is (re)enabled on all 15 tables enumerated in §4.7 block 14.
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-8---   * public.events has no policy (RLS + zero policies + revoke = deny);
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-24-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-25--- ---------------- Helpers (JWT → current user / role) ----------------
+supabase/migrations/20260417140000_us_009_rls_policies.sql:26:create or replace function public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-27-returns uuid
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-28-language sql
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-42-$$;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-43-
+supabase/migrations/20260417140000_us_009_rls_policies.sql:44:revoke all on function public.current_user_id() from public;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-45-revoke all on function public.current_user_role() from public;
+supabase/migrations/20260417140000_us_009_rls_policies.sql:46:grant execute on function public.current_user_id() to anon, authenticated, service_role;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-47-grant execute on function public.current_user_role() to anon, authenticated, service_role;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-48-
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-67-drop policy if exists users_self_select on public.users;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-68-create policy users_self_select on public.users for select
+supabase/migrations/20260417140000_us_009_rls_policies.sql:69:  using (id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-70-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-71-drop policy if exists users_self_update on public.users;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-72-create policy users_self_update on public.users for update
+supabase/migrations/20260417140000_us_009_rls_policies.sql:73:  using (id = public.current_user_id())
+supabase/migrations/20260417140000_us_009_rls_policies.sql:74:  with check (id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-75-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-76--- ---------------- creator_profiles ----------------
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-78-create policy creator_profiles_self_rw on public.creator_profiles
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-79-  for all
+supabase/migrations/20260417140000_us_009_rls_policies.sql:80:  using (user_id = public.current_user_id())
+supabase/migrations/20260417140000_us_009_rls_policies.sql:81:  with check (user_id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-82-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-83-drop policy if exists creator_profiles_lister_read on public.creator_profiles;
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-89-      join public.listings l on l.id = a.listing_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-90-      where a.creator_id = public.creator_profiles.user_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:91:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-92-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-93-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-97-create policy lister_profiles_self_rw on public.lister_profiles
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-98-  for all
+supabase/migrations/20260417140000_us_009_rls_policies.sql:99:  using (user_id = public.current_user_id())
+supabase/migrations/20260417140000_us_009_rls_policies.sql:100:  with check (user_id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-101-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-102--- ---------------- social_links ----------------
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-104-create policy social_links_self_rw on public.social_links
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-105-  for all
+supabase/migrations/20260417140000_us_009_rls_policies.sql:106:  using (user_id = public.current_user_id())
+supabase/migrations/20260417140000_us_009_rls_policies.sql:107:  with check (user_id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-108-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-109-drop policy if exists social_links_lister_read on public.social_links;
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-115-      join public.listings l on l.id = a.listing_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-116-      where a.creator_id = public.social_links.user_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:117:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-118-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-119-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-128-      select 1 from public.social_links sl
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-129-      where sl.id = public.metric_snapshots.social_link_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:130:        and sl.user_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-131-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-132-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-142-      join public.listings l on l.id = a.listing_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-143-      where sl.id = public.metric_snapshots.social_link_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:144:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-145-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-146-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-154-create policy listings_owner_all on public.listings
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-155-  for all
+supabase/migrations/20260417140000_us_009_rls_policies.sql:156:  using (lister_id = public.current_user_id())
+supabase/migrations/20260417140000_us_009_rls_policies.sql:157:  with check (lister_id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-158-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-159--- ---------------- listing_versions ----------------
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-164-      select 1 from public.listings l
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-165-      where l.id = public.listing_versions.listing_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:166:        and (l.status = 'active' or l.lister_id = public.current_user_id())
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-167-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-168-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-177-      join public.listings l on l.id = v.listing_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-178-      where v.id = public.listing_conditions.listing_version_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:179:        and (l.status = 'active' or l.lister_id = public.current_user_id())
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-180-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-181-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-190-      join public.listings l on l.id = v.listing_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-191-      where v.id = public.sample_videos.listing_version_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:192:        and (l.status = 'active' or l.lister_id = public.current_user_id())
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-193-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-194-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-198-create policy applications_creator_rw on public.applications
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-199-  for all
+supabase/migrations/20260417140000_us_009_rls_policies.sql:200:  using (creator_id = public.current_user_id())
+supabase/migrations/20260417140000_us_009_rls_policies.sql:201:  with check (creator_id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-202-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-203-drop policy if exists applications_lister_read on public.applications;
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-207-      select 1 from public.listings l
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-208-      where l.id = public.applications.listing_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:209:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-210-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-211-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-217-      select 1 from public.listings l
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-218-      where l.id = public.applications.listing_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:219:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-220-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-221-  )
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-224-      select 1 from public.listings l
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-225-      where l.id = public.applications.listing_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:226:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-227-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-228-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-236-      select 1 from public.applications a
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-237-      where a.id = public.submissions.application_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:238:        and a.creator_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-239-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-240-  )
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-243-      select 1 from public.applications a
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-244-      where a.id = public.submissions.application_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:245:        and a.creator_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-246-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-247-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-255-      join public.listings l on l.id = a.listing_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-256-      where a.id = public.submissions.application_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:257:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-258-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-259-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-267-      join public.listings l on l.id = a.listing_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-268-      where a.id = public.submissions.application_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:269:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-270-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-271-  )
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-276-      join public.listings l on l.id = a.listing_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-277-      where a.id = public.submissions.application_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:278:        and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-279-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-280-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-290-      where s.id = public.submission_videos.submission_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-291-        and (
+supabase/migrations/20260417140000_us_009_rls_policies.sql:292:          a.creator_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-293-          or exists (
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-294-            select 1 from public.listings l
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-295-            where l.id = a.listing_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:296:              and l.lister_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-297-          )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-298-        )
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-309-      join public.applications a on a.id = s.application_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-310-      where s.id = public.submission_videos.submission_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:311:        and a.creator_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-312-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-313-  )
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-318-      join public.applications a on a.id = s.application_id
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-319-      where s.id = public.submission_videos.submission_id
+supabase/migrations/20260417140000_us_009_rls_policies.sql:320:        and a.creator_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-321-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-322-  );
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-326-create policy notifications_self_rw on public.notifications
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-327-  for all
+supabase/migrations/20260417140000_us_009_rls_policies.sql:328:  using (user_id = public.current_user_id())
+supabase/migrations/20260417140000_us_009_rls_policies.sql:329:  with check (user_id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-330-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-331-drop policy if exists push_tokens_self_rw on public.push_tokens;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-332-create policy push_tokens_self_rw on public.push_tokens
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-333-  for all
+supabase/migrations/20260417140000_us_009_rls_policies.sql:334:  using (user_id = public.current_user_id())
+supabase/migrations/20260417140000_us_009_rls_policies.sql:335:  with check (user_id = public.current_user_id());
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-336-
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-337--- ---------------- events ----------------
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-357-  v_count    integer;
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-358-begin
+supabase/migrations/20260417140000_us_009_rls_policies.sql:359:  v_caller := public.current_user_id();
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-360-  if v_caller is null then
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417140000_us_009_rls_policies.sql-361-    return null;
+--
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-23-      select 1 from public.social_links sl
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-24-      where sl.id = public.metric_snapshots.social_link_id
+supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql:25:        and sl.user_id = public.current_user_id()
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-26-    )
+/Users/bulutyazgan/Desktop/marketify/supabase/migrations/20260417240000_us_035_metric_snapshots_self_read_stale.sql-27-  );
