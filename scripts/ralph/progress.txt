@@ -1574,3 +1574,15 @@ Started: (will be replaced on first run)
   - **MCP-authless type regen workaround:** when `generate_typescript_types` is unavailable, the manual `list_submission_reuse_campaigns: { Args: {...}, Returns: {...}[] }` entry in `src/types/supabase.ts` typechecks identically to a generator output. Place between neighbours in alphabetical order. Note the manual entry in prd.json notes so the next MCP-ready iteration diffs it.
   - **Mobile-mcp verification under MCP blocker:** a layout baseline screenshot confirming the existing route still renders after a Pressable/Modal refactor is a valid `mobile-mcp ✓` when the live-interaction path requires seeded data that can't be produced this iteration. Document the blocker posture in notes (not the static vs live distinction).
 ---
+
+## 2026-04-19 18:00 — US-061 (MCP blocker re-check, still passes:false)
+- Iteration picked the lowest-priority `passes:false` story per the loop rule. Implementation already shipped in c291ad9; prd.json US-061 notes + the 2026-04-19 15:45 progress entry already document the migration file (`supabase/migrations/20260419120000_us_061_notifications_realtime_mark_read.sql`), the exact apply_migration + execute_sql re-verify path, and the flip-to-true criteria.
+- Re-checked `mcp__plugin_supabase_supabase__authenticate` this iteration: still returns an OAuth authorisation URL (https://api.supabase.com/v1/oauth/authorize?…) that requires interactive browser completion. Autonomous loop cannot complete OAuth — same blocker class as the four prior MCP-blocked iterations (Pattern #153). No code, migration, or screenshot work this iteration.
+- Files changed:
+  - `scripts/ralph/progress.txt` (this entry only)
+- Quality checks: tsc skipped (no code delta) / lint skipped (no code delta) / supabase advisors n/a (MCP blocked) / mobile-mcp skipped (nothing new to render).
+- Code-reviewer skipped (no diff to review).
+- Re-verify when Supabase MCP re-auth completes: follow the existing US-061 re-verify checklist verbatim from prd.json notes — apply_migration 20260419120000, execute_sql to insert a notification for dev_creator, confirm bell ticks 0→1 in-session on Discover, screenshot the live-tick state, flip `passes:true` in prd.json. No additional implementation work needed.
+- **Learnings for future iterations:**
+  - **MCP-blocker re-check iterations are valid loop activity.** When the lowest-priority `passes:false` story is shipped-but-MCP-blocked AND its prd.json notes + progress.txt entry already exhaustively document the blocker, the iteration's deliverable is a one-paragraph progress.txt re-check entry + a `chore:` commit. Do not re-write the implementation, do not duplicate the re-verify checklist into the new entry (just point at the existing one), do not flip `passes` in either direction. Keeps the loop's commit history honest about how many iterations the MCP outage has spanned without churning the codebase.
+---
