@@ -1634,3 +1634,11 @@ Started: (will be replaced on first run)
 - Quality checks: tsc skipped / lint skipped / supabase advisors n/a (MCP blocked) / mobile-mcp skipped.
 - Code-reviewer skipped (no implementation diff).
 ---
+
+## 2026-04-19 22:00 — US-061 (MCP blocker re-check, still passes:false)
+- Ninth consecutive MCP-blocked iteration on US-061 (US-065 remains blocked at lower priority). Per Codebase Pattern #162 / #153 the autonomous loop cannot self-unblock — still waiting on a human-initiated interactive Supabase OAuth session.
+- ToolSearch probe: `select:mcp__plugin_supabase_supabase__list_tables,mcp__plugin_supabase_supabase__apply_migration,mcp__plugin_supabase_supabase__execute_sql` → "No matching deferred tools found". Broader keyword probe (`supabase`) only surfaces `mcp__plugin_supabase_supabase__authenticate` + `mcp__plugin_supabase_supabase__complete_authentication`. Identical to the prior eight iterations.
+- Working tree clean on `ralph/marketify-mvp` at entry; US-061 artifacts (migration + NotificationBell + NotificationsScreen + creator/lister route wrappers) intact from the original ship in commit from 2026-04-19 earlier in the day. Re-verify path unchanged: apply_migration 20260419120000, seed a notification via execute_sql against the dev_creator user, confirm bell ticks live + mark-read clears badge, screenshot, flip `passes:true`.
+- No implementation delta. No Codebase Patterns delta. No code-reviewer run (nothing to review). No quality-gate run (no code changes).
+- Files changed: `scripts/ralph/progress.txt` (this entry only).
+---
