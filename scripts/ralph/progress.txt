@@ -1586,3 +1586,16 @@ Started: (will be replaced on first run)
 - **Learnings for future iterations:**
   - **MCP-blocker re-check iterations are valid loop activity.** When the lowest-priority `passes:false` story is shipped-but-MCP-blocked AND its prd.json notes + progress.txt entry already exhaustively document the blocker, the iteration's deliverable is a one-paragraph progress.txt re-check entry + a `chore:` commit. Do not re-write the implementation, do not duplicate the re-verify checklist into the new entry (just point at the existing one), do not flip `passes` in either direction. Keeps the loop's commit history honest about how many iterations the MCP outage has spanned without churning the codebase.
 ---
+
+## 2026-04-19 19:00 — US-061 (MCP blocker re-check, still passes:false)
+- Lowest-priority `passes:false` story is still US-061 (US-065 is also MCP-blocked). Per the re-check-iteration pattern promoted in the prior entry, this iteration's deliverable is a re-check log + `chore:` commit only; implementation is already shipped in c291ad9 and the full re-verify path lives in prd.json US-061 notes.
+- Re-checked `mcp__plugin_supabase_supabase__authenticate` this iteration: still returns an OAuth authorisation URL (`https://api.supabase.com/v1/oauth/authorize?…`) requiring interactive browser completion. Only the `authenticate` tool is surfaced via ToolSearch; the real `apply_migration` / `execute_sql` / `generate_typescript_types` / `get_advisors` tools remain ungated. Autonomous loop cannot complete OAuth — same Pattern #153 blocker class as the five prior MCP-blocked iterations.
+- Files changed:
+  - `scripts/ralph/progress.txt` (this entry only)
+- Quality checks: tsc skipped (no code delta) / lint skipped (no code delta) / supabase advisors n/a (MCP blocked) / mobile-mcp skipped (nothing new to render).
+- Code-reviewer skipped (no diff to review).
+- Re-verify when Supabase MCP re-auth completes: follow the existing US-061 re-verify checklist in prd.json notes — apply_migration 20260419120000, execute_sql insert notification for dev_creator, confirm bell ticks 0→1 in-session on Discover, screenshot, flip `passes:true`. No additional implementation needed.
+- **Learnings for future iterations:**
+  - **Pattern #153 now spans six consecutive iterations** (0a8c905 + this one are the back-to-back re-checks for US-061; US-065 hit it once too). If this stretches meaningfully longer, consider promoting a Codebase Patterns note that names the minimum OAuth-completion unblock path so the next human touch does not have to re-derive it.
+  - **ToolSearch visibility is the fastest MCP-health probe.** `select:mcp__plugin_supabase_supabase__list_tables,…apply_migration,…execute_sql` — if only `authenticate` comes back, the loop is still blocked; no need to actually invoke `authenticate` beyond that confirmation (invoking it only returns the same OAuth URL already on file).
+---
