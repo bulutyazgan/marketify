@@ -1702,3 +1702,15 @@ Started: (will be replaced on first run)
 - **Learnings for future iterations:**
   - Fourteen consecutive blocked iterations. One away from the 15-iteration plateau marker flagged at iteration ten. Shape remains the one-paragraph heartbeat + `chore:` commit until a human-initiated interactive session completes Supabase OAuth.
 ---
+
+## 2026-04-20 00:30 — US-061 (MCP blocker re-check, still passes:false)
+- Fifteenth consecutive MCP-blocked iteration on US-061 — hits the 15-iteration plateau marker flagged at iteration ten. US-065 remains blocked at priority 65. Per Codebase Pattern #162 / #153 the autonomous loop still cannot self-unblock — Supabase OAuth callback URL (`http://localhost:<port>/callback`) is unreachable from the headless loop.
+- ToolSearch probe this iteration: `select:mcp__plugin_supabase_supabase__apply_migration,mcp__plugin_supabase_supabase__execute_sql,mcp__plugin_supabase_supabase__list_tables,mcp__plugin_supabase_supabase__list_migrations,mcp__plugin_supabase_supabase__generate_typescript_types,mcp__plugin_supabase_supabase__get_advisors` → "No matching deferred tools found". Broader `supabase migration` probe surfaced only `mcp__plugin_supabase_supabase__authenticate` + `mcp__plugin_supabase_supabase__complete_authentication`. Did not invoke `authenticate` (consistent with iterations 11–14 — avoid issuing dead OAuth URLs).
+- Working tree clean on `ralph/marketify-mvp` at entry; US-061 artifacts intact from commit c291ad9. Re-verify path unchanged — see prd.json US-061 notes.
+- No implementation delta. No Codebase Patterns delta. No code-reviewer run. No quality-gate run.
+- Files changed: `scripts/ralph/progress.txt` (this entry only).
+- Quality checks: tsc skipped / lint skipped / supabase advisors n/a (MCP blocked) / mobile-mcp skipped.
+- Code-reviewer skipped (no implementation diff).
+- **Learnings for future iterations:**
+  - Plateau reached at 15 consecutive blocked iterations. Shape remains the one-paragraph heartbeat + `chore:` commit until a human-initiated interactive session completes Supabase OAuth. Operator attention signal: fifteen identical heartbeats is the handoff boundary; continuing past here is expected cost but the loop will never self-recover.
+---
