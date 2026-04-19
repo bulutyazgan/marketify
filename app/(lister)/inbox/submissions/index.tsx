@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -7,8 +8,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { Repeat2 } from 'lucide-react-native';
+import { BottomSheet } from '@/components/primitives/BottomSheet';
 import { StatusPill, type StatusPillStatus } from '@/components/primitives/StatusPill';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { useToast } from '@/components/primitives/Toast';
@@ -389,7 +392,11 @@ function SubmissionInboxRow({ row }: { row: Row }) {
       </View>
 
       {reuse > 0 ? (
-        <ReuseBadge count={reuse} testID={`reuse-badge-${row.submission_id}`} />
+        <ReuseBadge
+          count={reuse}
+          submissionId={row.submission_id}
+          testID={`reuse-badge-${row.submission_id}`}
+        />
       ) : null}
 
       <Text style={[textStyles.caption, { color: colors.ink70 }]}>Submitted {relative}</Text>
@@ -421,26 +428,186 @@ function HandleLine({ platform, handle }: HandleLineProps) {
   );
 }
 
-// Inline ReuseBadge, inline variant per docs/design.md §4.6 + §6.
-// Warning-soft background, 2-px ink border, Lucide Repeat2 icon. The
-// header variant + the tap-to-list-others sheet live in US-059.
-function ReuseBadge({ count, testID }: { count: number; testID?: string }) {
+// Inline ReuseBadge, inline variant per docs/design.md §4.6 + §6. Warning-soft
+// background, 2-px ink border, Lucide Repeat2 icon. US-065 made the badge
+// tappable — tap opens a bottom sheet listing the other campaigns this URL was
+// submitted to (titles only, collapsed to one row per listing). Cross-tenant
+// titles are sourced from `public.list_submission_reuse_campaigns` (SECURITY
+// DEFINER with ownership check on the input submission).
+function ReuseBadge({
+  count,
+  submissionId,
+  testID,
+}: {
+  count: number;
+  submissionId: string;
+  testID?: string;
+}) {
+  const [sheetOpen, setSheetOpen] = useState(false);
   const label =
     count === 1
       ? 'Also submitted to 1 other campaign'
       : `Also submitted to ${count} other campaigns`;
+  const onPress = useCallback(() => {
+    void Haptics.selectionAsync().catch(() => {});
+    setSheetOpen(true);
+  }, []);
   return (
-    <View
-      style={[styles.reuseBadge, shadows.hard]}
-      accessibilityRole="text"
-      accessibilityLabel={label}
-      testID={testID}
+    <>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.reuseBadge,
+          shadows.hard,
+          pressed ? styles.reuseBadgePressed : null,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityHint="Opens a sheet listing the other campaigns this video was submitted to"
+        testID={testID}
+        hitSlop={6}
+      >
+        <Repeat2 size={14} color={colors.ink} strokeWidth={2.5} />
+        <Text style={[textStyles.micro, { color: colors.ink }]} allowFontScaling={false}>
+          {label}
+        </Text>
+      </Pressable>
+      <ReuseSheet
+        visible={sheetOpen}
+        submissionId={submissionId}
+        onDismiss={() => setSheetOpen(false)}
+      />
+    </>
+  );
+}
+
+type ReuseCampaignRow =
+  Database['public']['Functions']['list_submission_reuse_campaigns']['Returns'][number];
+
+// ReuseSheet — bottom sheet body for the ReuseBadge tap. Fetches lazy on
+// open, resets on close so a re-open after a new submission lands picks up
+// fresh data. Transient errors surface as a toast via `classifySupabaseError`
+// (Codebase Pattern #158) + a retry affordance in the sheet body — parity
+// with the parent screen's error-handling posture.
+function ReuseSheet({
+  visible,
+  submissionId,
+  onDismiss,
+}: {
+  visible: boolean;
+  submissionId: string;
+  onDismiss: () => void;
+}) {
+  const { show: showToast } = useToast();
+  const [rows, setRows] = useState<ReuseCampaignRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!visible) {
+      setRows(null);
+      setError(null);
+      setAttempt(0);
+      return;
+    }
+    let cancelled = false;
+    setError(null);
+    setRows(null);
+    void supabase
+      .rpc('list_submission_reuse_campaigns', { p_submission_id: submissionId })
+      .then(async ({ data, error: rpcError }) => {
+        if (cancelled) return;
+        if (rpcError) {
+          setError("Couldn't load the other campaigns.");
+          setRows([]);
+          const info = await classifySupabaseError(rpcError);
+          if (!cancelled && info.isTransient) {
+            showToast({ message: transientErrorMessage(info), variant: 'error' });
+          }
+          return;
+        }
+        setRows(data ?? []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, submissionId, attempt, showToast]);
+
+  return (
+    <BottomSheet
+      visible={visible}
+      onDismiss={onDismiss}
+      snapPoints={[0.5]}
+      accessibilityLabel="Other campaigns this video was submitted to"
+      testID={`reuse-sheet-${submissionId}`}
     >
-      <Repeat2 size={14} color={colors.ink} strokeWidth={2.5} />
-      <Text style={[textStyles.micro, { color: colors.ink }]} allowFontScaling={false}>
-        {label}
-      </Text>
-    </View>
+      <View style={styles.sheetBody}>
+        <Text style={[textStyles.h2, { color: colors.ink }]}>Also in these campaigns</Text>
+        <Text
+          style={[textStyles.caption, { color: colors.ink70 }]}
+          maxFontSizeMultiplier={1.3}
+        >
+          This creator submitted the same video to these other campaigns. Use
+          this to decide whether cross-posting is a problem for your brief.
+        </Text>
+        {rows === null && !error ? (
+          <View style={styles.sheetLoading} testID="reuse-sheet-loading">
+            <ActivityIndicator color={colors.ink} />
+          </View>
+        ) : error ? (
+          <View style={styles.sheetErrorBlock}>
+            <Text
+              style={[textStyles.caption, { color: colors.danger }]}
+              testID="reuse-sheet-error"
+            >
+              {error}
+            </Text>
+            <Pressable
+              onPress={() => setAttempt((n) => n + 1)}
+              style={({ pressed }) => [
+                styles.sheetRetry,
+                shadows.hard,
+                pressed ? styles.reuseBadgePressed : null,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Try again"
+              testID="reuse-sheet-retry"
+              hitSlop={6}
+            >
+              <Text style={[textStyles.micro, { color: colors.ink }]} allowFontScaling={false}>
+                Try again
+              </Text>
+            </Pressable>
+          </View>
+        ) : rows && rows.length === 0 ? (
+          <Text
+            style={[textStyles.caption, { color: colors.ink70 }]}
+            testID="reuse-sheet-empty"
+          >
+            No other campaigns found.
+          </Text>
+        ) : (
+          <View style={styles.sheetList}>
+            {rows?.map((r) => (
+              <View
+                key={r.listing_id}
+                style={styles.sheetRow}
+                accessibilityRole="text"
+                testID={`reuse-sheet-row-${r.listing_id}`}
+              >
+                <Text
+                  style={[textStyles.body, { color: colors.ink }]}
+                  numberOfLines={2}
+                  maxFontSizeMultiplier={1.3}
+                >
+                  {r.listing_title}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    </BottomSheet>
   );
 }
 
@@ -532,5 +699,38 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.ink,
     backgroundColor: colors.warningSoft,
+  },
+  reuseBadgePressed: {
+    opacity: 0.85,
+  },
+  sheetBody: {
+    padding: spacing.base,
+    gap: spacing.md,
+  },
+  sheetLoading: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+  },
+  sheetList: {
+    gap: spacing.sm,
+  },
+  sheetRow: {
+    borderWidth: 2,
+    borderColor: colors.ink,
+    borderRadius: radii.card,
+    backgroundColor: colors.surface,
+    padding: spacing.base,
+  },
+  sheetErrorBlock: {
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+  },
+  sheetRetry: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    borderColor: colors.ink,
+    backgroundColor: colors.surface,
   },
 });

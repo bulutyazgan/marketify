@@ -957,6 +957,13 @@ export type Database = {
           video_url: string
         }[]
       }
+      list_submission_reuse_campaigns: {
+        Args: { p_submission_id: string }
+        Returns: {
+          listing_id: string
+          listing_title: string
+        }[]
+      }
       lister_dashboard_counts: {
         Args: never
         Returns: {
