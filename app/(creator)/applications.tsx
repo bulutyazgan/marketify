@@ -10,6 +10,11 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { router } from 'expo-router';
+import {
+  CelebrationBurst,
+  type CelebrationBurstHandle,
+} from '@/components/effects/CelebrationBurst';
+import { ShakeOnError, type ShakeOnErrorHandle } from '@/components/effects/ShakeOnError';
 import { StatusPill, type StatusPillStatus } from '@/components/primitives/StatusPill';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { useToast } from '@/components/primitives/Toast';
@@ -135,6 +140,22 @@ export default function Applications() {
     rowsRef.current = rows;
   }, [rows]);
 
+  // US-060 — approval/rejection animation dispatch. CelebrationBurst mounts
+  // once at the screen level; ShakeOnError wraps each row's StatusPill and
+  // registers its imperative handle in `shakeRefs` via a callback ref on the
+  // row card so the realtime handler can shake by row id. React's callback
+  // ref semantics ensure the map is cleaned up when a row unmounts (segment
+  // switch or realtime-driven patch) — no manual cleanup needed.
+  const burstRef = useRef<CelebrationBurstHandle | null>(null);
+  const shakeRefs = useRef<Map<string, ShakeOnErrorHandle>>(new Map());
+  const registerShake = useCallback(
+    (id: string, handle: ShakeOnErrorHandle | null) => {
+      if (handle) shakeRefs.current.set(id, handle);
+      else shakeRefs.current.delete(id);
+    },
+    [],
+  );
+
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
@@ -185,12 +206,24 @@ export default function Applications() {
             if (!prior) return;
             if (prior.status === next.status) return;
             const nextStatus = next.status;
+            // Trigger the animation BEFORE setRows so the row is still
+            // mounted under its current segment when shake() fires. The
+            // spring/sequence starts immediately; React's next commit may
+            // unmount the row mid-animation (segment change) but the user
+            // still catches the start of the shake on the pending row, and
+            // the resting-state pill appears in the destination segment.
+            if (nextStatus === 'approved') {
+              burstRef.current?.burst();
+            } else if (nextStatus === 'rejected') {
+              shakeRefs.current.get(next.id)?.shake();
+            }
             setRows((cur) =>
               cur.map((r) => (r.id === next.id ? { ...r, status: nextStatus } : r)),
             );
             if (nextStatus === 'approved') {
+              // Copy per docs/design.md §5.3 approved banner.
               showToast({
-                message: 'Your application was approved',
+                message: 'Approved — nice work!',
                 variant: 'success',
               });
             } else if (nextStatus === 'rejected') {
@@ -248,11 +281,12 @@ export default function Applications() {
         ) : (
           <View style={styles.list}>
             {visible.map((row) => (
-              <ApplicationRowCard key={row.id} row={row} />
+              <ApplicationRowCard key={row.id} row={row} registerShake={registerShake} />
             ))}
           </View>
         )}
       </ScrollView>
+      <CelebrationBurst ref={burstRef} />
     </SafeAreaView>
   );
 }
@@ -272,6 +306,7 @@ function emptyMessageFor(segment: Segment): string {
 
 type ApplicationRowCardProps = {
   row: ApplicationRow;
+  registerShake?: (id: string, handle: ShakeOnErrorHandle | null) => void;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -283,7 +318,7 @@ function resolveTitle(row: ApplicationRow): string {
   return row.listing_title || row.version_title || 'Untitled campaign';
 }
 
-function ApplicationRowCard({ row, style }: ApplicationRowCardProps) {
+function ApplicationRowCard({ row, registerShake, style }: ApplicationRowCardProps) {
   const title = resolveTitle(row);
   const handle = row.lister_handle;
   const pillStatus: StatusPillStatus = STATUS_BUCKET[row.status];
@@ -298,6 +333,13 @@ function ApplicationRowCard({ row, style }: ApplicationRowCardProps) {
       router.push(`/(creator)/listing/${row.listing_id}`);
     }
   }, [row.id, row.listing_id, row.status]);
+
+  const shakeRef = useCallback(
+    (instance: ShakeOnErrorHandle | null) => {
+      if (registerShake) registerShake(row.id, instance);
+    },
+    [registerShake, row.id],
+  );
 
   return (
     <Pressable
@@ -316,7 +358,9 @@ function ApplicationRowCard({ row, style }: ApplicationRowCardProps) {
             <Text style={[textStyles.caption, { color: colors.ink70 }]}>@{handle}</Text>
           ) : null}
         </View>
-        <StatusPill status={pillStatus} />
+        <ShakeOnError ref={shakeRef}>
+          <StatusPill status={pillStatus} />
+        </ShakeOnError>
       </View>
       <Text style={[textStyles.caption, { color: colors.ink70 }]}>Applied {relative}</Text>
     </Pressable>

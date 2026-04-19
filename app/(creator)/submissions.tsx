@@ -10,8 +10,14 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { router } from 'expo-router';
+import {
+  CelebrationBurst,
+  type CelebrationBurstHandle,
+} from '@/components/effects/CelebrationBurst';
+import { ShakeOnError, type ShakeOnErrorHandle } from '@/components/effects/ShakeOnError';
 import { StatusPill, type StatusPillStatus } from '@/components/primitives/StatusPill';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
+import { useToast } from '@/components/primitives/Toast';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
@@ -102,6 +108,7 @@ function SegmentButton({ label, selected, onPress, testID }: SegmentButtonProps)
 export default function Submissions() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
+  const { show: showToast } = useToast();
 
   const [segment, setSegment] = useState<SubmissionStatus>('pending');
   const [rows, setRows] = useState<SubmissionRow[]>([]);
@@ -112,6 +119,20 @@ export default function Submissions() {
   useEffect(() => {
     rowsRef.current = rows;
   }, [rows]);
+
+  // US-060 — approval/rejection animation dispatch. Same pattern as
+  // applications.tsx: CelebrationBurst mounts once at screen level;
+  // ShakeOnError wraps each row's StatusPill via a callback-ref-registered
+  // imperative handle so the realtime handler can shake by row id.
+  const burstRef = useRef<CelebrationBurstHandle | null>(null);
+  const shakeRefs = useRef<Map<string, ShakeOnErrorHandle>>(new Map());
+  const registerShake = useCallback(
+    (id: string, handle: ShakeOnErrorHandle | null) => {
+      if (handle) shakeRefs.current.set(id, handle);
+      else shakeRefs.current.delete(id);
+    },
+    [],
+  );
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -160,9 +181,25 @@ export default function Submissions() {
             if (!prior) return;
             if (prior.status === next.status) return;
             const nextStatus = next.status;
+            // US-060: fire the animation BEFORE patching state so the row
+            // is still mounted when shake() is called. docs/design.md §5.3
+            // drives the shape — approved: confetti-lite + success banner;
+            // rejected: row shake + silent landing (no confetti, no banner).
+            if (nextStatus === 'approved') {
+              burstRef.current?.burst();
+            } else if (nextStatus === 'rejected') {
+              shakeRefs.current.get(next.id)?.shake();
+            }
             setRows((cur) =>
               cur.map((r) => (r.id === next.id ? { ...r, status: nextStatus } : r)),
             );
+            if (nextStatus === 'approved') {
+              showToast({
+                message: 'Approved — nice work!',
+                variant: 'success',
+              });
+            }
+            // Rejected path is intentionally silent per §5.3 — no banner.
           },
         )
         .subscribe();
@@ -171,7 +208,7 @@ export default function Submissions() {
       cancelled = true;
       if (activeChannel) void supabase.removeChannel(activeChannel);
     };
-  }, [userId]);
+  }, [userId, showToast]);
 
   const byStatus = useMemo(() => {
     const map: Record<SubmissionStatus, SubmissionRow[]> = {
@@ -211,11 +248,12 @@ export default function Submissions() {
         ) : (
           <View style={styles.list}>
             {visible.map((row) => (
-              <SubmissionRowCard key={row.id} row={row} />
+              <SubmissionRowCard key={row.id} row={row} registerShake={registerShake} />
             ))}
           </View>
         )}
       </ScrollView>
+      <CelebrationBurst ref={burstRef} />
     </SafeAreaView>
   );
 }
@@ -237,10 +275,11 @@ function resolveTitle(row: SubmissionRow): string {
 
 type SubmissionRowCardProps = {
   row: SubmissionRow;
+  registerShake?: (id: string, handle: ShakeOnErrorHandle | null) => void;
   style?: StyleProp<ViewStyle>;
 };
 
-function SubmissionRowCard({ row, style }: SubmissionRowCardProps) {
+function SubmissionRowCard({ row, registerShake, style }: SubmissionRowCardProps) {
   const title = resolveTitle(row);
   const handle = row.lister_handle;
   const pillStatus: StatusPillStatus = row.status;
@@ -249,6 +288,13 @@ function SubmissionRowCard({ row, style }: SubmissionRowCardProps) {
   const onPress = useCallback(() => {
     router.push(`/(creator)/listing/${row.listing_id}`);
   }, [row.listing_id]);
+
+  const shakeRef = useCallback(
+    (instance: ShakeOnErrorHandle | null) => {
+      if (registerShake) registerShake(row.id, instance);
+    },
+    [registerShake, row.id],
+  );
 
   return (
     <Pressable
@@ -267,7 +313,9 @@ function SubmissionRowCard({ row, style }: SubmissionRowCardProps) {
             <Text style={[textStyles.caption, { color: colors.ink70 }]}>@{handle}</Text>
           ) : null}
         </View>
-        <StatusPill status={pillStatus} />
+        <ShakeOnError ref={shakeRef}>
+          <StatusPill status={pillStatus} />
+        </ShakeOnError>
       </View>
       {row.video_url ? (
         <Text
