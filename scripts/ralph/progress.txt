@@ -1599,3 +1599,14 @@ Started: (will be replaced on first run)
   - **Pattern #153 now spans six consecutive iterations** (0a8c905 + this one are the back-to-back re-checks for US-061; US-065 hit it once too). If this stretches meaningfully longer, consider promoting a Codebase Patterns note that names the minimum OAuth-completion unblock path so the next human touch does not have to re-derive it.
   - **ToolSearch visibility is the fastest MCP-health probe.** `select:mcp__plugin_supabase_supabase__list_tables,…apply_migration,…execute_sql` — if only `authenticate` comes back, the loop is still blocked; no need to actually invoke `authenticate` beyond that confirmation (invoking it only returns the same OAuth URL already on file).
 ---
+
+## 2026-04-19 15:54 — US-061 (MCP blocker re-check)
+- Supabase MCP still returns `authenticate` URL (OAuth loop requires human action; autonomous loop can't complete it). Same class as prior re-check commits 0d7cd0c / 0a8c905.
+- Files on disk unchanged from the 2026-04-19 partial-ship commit: migration `20260419120000_us_061_notifications_realtime_mark_read.sql`, `NotificationBell.tsx`, `NotificationsScreen.tsx`, `app/(creator)/notifications.tsx`, `app/(lister)/notifications.tsx`. `git status` clean before this chore commit.
+- Quality checks: tsc ✓ / expo lint ✓ (exit 0). No mobile-mcp run this iteration — nothing changed to re-verify; the last simulator screenshots still apply: /tmp/us061-inbox-unread.png, /tmp/us061-inbox-read.png.
+- Code-reviewer verdict: n/a (no new diff besides this log entry).
+- passes:false retained. Unblock path unchanged: apply_migration 20260419120000 → execute_sql insert a `notifications` row for dev_creator → confirm bell 0→1 live via realtime → tap → confirm mark-read drops badge without remount → screenshot → flip passes:true.
+- **Learnings for future iterations:**
+  - Pattern #145 (MCP auth-only surface blocks realtime/publication-dependent stories) now has 3 confirmed re-check cycles on US-061 alone. When only `authenticate`/`complete_authentication` surface from ToolSearch for Supabase, do not burn cycles spawning code-reviewer or mobile-mcp — go straight to chore re-check + log.
+  - Keep re-check commits as `chore:` not `feat:` so the history stays honest about what changed (just a heartbeat, not code).
+---
