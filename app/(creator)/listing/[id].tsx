@@ -14,8 +14,10 @@ import { Check, ChevronLeft, ExternalLink, X } from 'lucide-react-native';
 import { ButtonPrimary } from '@/components/primitives/Button';
 import { StatusPill } from '@/components/primitives/StatusPill';
 import { useToast } from '@/components/primitives/Toast';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
+import { classifySupabaseError, transientErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import { ApplySheet, type ApplyFailure } from '@/screens/listing-detail/ApplySheet';
@@ -112,6 +114,10 @@ export default function ListingDetail() {
       }
       console.error('get-listing-detail failed', error);
       setState({ kind: 'error', code: 'generic' });
+      const info = await classifySupabaseError(error);
+      if (info.isTransient) {
+        showToast({ message: transientErrorMessage(info), variant: 'error' });
+      }
       return;
     }
     if (!data) {
@@ -119,7 +125,7 @@ export default function ListingDetail() {
       return;
     }
     setState({ kind: 'ok', data });
-  }, [id]);
+  }, [id, showToast]);
 
   useEffect(() => {
     void load();
@@ -181,7 +187,7 @@ export default function ListingDetail() {
           <ActivityIndicator color={colors.ink} />
         </View>
       ) : state.kind === 'error' ? (
-        <ErrorBody code={state.code} onBack={onBack} />
+        <ErrorBody code={state.code} onBack={onBack} onRetry={load} />
       ) : (
         <DetailBody data={state.data} onApply={onApply} />
       )}
@@ -220,28 +226,30 @@ function Header({ onBack }: { onBack: () => void }) {
 function ErrorBody({
   code,
   onBack,
+  onRetry,
 }: {
   code: 'not_found' | 'generic';
   onBack: () => void;
+  onRetry: () => void;
 }) {
-  const copy =
-    code === 'not_found'
-      ? 'This campaign is no longer available.'
-      : 'Could not load this campaign. Try again in a moment.';
+  if (code === 'not_found') {
+    return (
+      <ErrorState
+        testID="listing-error"
+        illustration="not_found"
+        title="Campaign not found"
+        body="This campaign is no longer available."
+        retryLabel="Back to feed"
+        onRetry={onBack}
+      />
+    );
+  }
   return (
-    <View style={styles.centered}>
-      <Text style={[textStyles.h1, { color: colors.ink, textAlign: 'center' }]}>
-        Campaign not found
-      </Text>
-      <Text
-        style={[textStyles.body, { color: colors.ink70, textAlign: 'center', marginTop: spacing.sm }]}
-      >
-        {copy}
-      </Text>
-      <View style={{ marginTop: spacing.xl, minWidth: 160 }}>
-        <ButtonPrimary label="Back to feed" onPress={onBack} testID="listing-error-back" />
-      </View>
-    </View>
+    <ErrorState
+      testID="listing-error"
+      body="Could not load this campaign. Try again in a moment."
+      onRetry={onRetry}
+    />
   );
 }
 

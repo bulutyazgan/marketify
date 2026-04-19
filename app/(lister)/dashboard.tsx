@@ -10,9 +10,12 @@ import {
 import { router } from 'expo-router';
 import { Fab } from '@/components/shared/Fab';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
+import { useToast } from '@/components/primitives/Toast';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
+import { classifySupabaseError, transientErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
@@ -57,6 +60,7 @@ export default function ListerDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { show: showToast } = useToast();
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -65,6 +69,10 @@ export default function ListerDashboard() {
     if (rpcError) {
       setError("Couldn't load dashboard stats.");
       setCounts(null);
+      const info = await classifySupabaseError(rpcError);
+      if (info.isTransient) {
+        showToast({ message: transientErrorMessage(info), variant: 'error' });
+      }
     } else {
       // RPC returns `setof record` so data is an array; the function
       // always yields exactly one row (three scalar sub-selects joined by
@@ -72,7 +80,7 @@ export default function ListerDashboard() {
       // payload for any reason.
       setCounts(data?.[0] ?? ZERO_COUNTS);
     }
-  }, [userId]);
+  }, [userId, showToast]);
 
   useEffect(() => {
     setLoading(true);
@@ -106,9 +114,14 @@ export default function ListerDashboard() {
             <SkeletonCard height={96} />
           </View>
         ) : error ? (
-          <View style={styles.errorBox}>
-            <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
-          </View>
+          <ErrorState
+            testID="dashboard-error"
+            body={error}
+            onRetry={() => {
+              setLoading(true);
+              void load().finally(() => setLoading(false));
+            }}
+          />
         ) : isAllZero(counts) ? (
           <View style={styles.emptyBox} testID="dashboard-empty">
             <Text style={[textStyles.body, { color: colors.ink70, textAlign: 'center' }]}>
@@ -193,10 +206,6 @@ const styles = StyleSheet.create({
   },
   tileLabel: {
     color: colors.ink70,
-  },
-  errorBox: {
-    padding: spacing.lg,
-    alignItems: 'center',
   },
   emptyBox: {
     padding: spacing.lg,

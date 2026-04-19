@@ -12,9 +12,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CampaignCard } from '@/components/primitives/CampaignCard';
 import { Chip } from '@/components/primitives/Chip';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
+import { useToast } from '@/components/primitives/Toast';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { colors, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
+import { classifySupabaseError, transientErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
@@ -53,6 +56,7 @@ export default function Feed() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { show: showToast } = useToast();
 
   // Synchronous ref mirrors the latest toggle value so the `load` callback
   // never stale-captures it (Pattern #106). React state still drives the UI.
@@ -88,12 +92,16 @@ export default function Feed() {
     if (rpcError) {
       setError("Couldn't load campaigns.");
       setRows([]);
+      const info = await classifySupabaseError(rpcError);
+      if (info.isTransient) {
+        showToast({ message: transientErrorMessage(info), variant: 'error' });
+      }
     } else {
       setRows(data ?? []);
     }
     if (isRefresh) setRefreshing(false);
     else setLoading(false);
-  }, []);
+  }, [showToast]);
 
   // Re-fetch whenever the toggle changes, but only after hydration — the
   // first effect run will otherwise fire twice (once with the default,
@@ -146,9 +154,14 @@ export default function Feed() {
             <SkeletonCard />
           </View>
         ) : error ? (
-          <View style={styles.emptyBox}>
-            <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
-          </View>
+          <ErrorState
+            testID="discover-error"
+            body={error}
+            onRetry={() => {
+              setError(null);
+              void load(false);
+            }}
+          />
         ) : rows.length === 0 ? (
           <EmptyState
             testID="discover-empty"
@@ -210,9 +223,5 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
-  },
-  emptyBox: {
-    padding: spacing.lg,
-    alignItems: 'center',
   },
 });

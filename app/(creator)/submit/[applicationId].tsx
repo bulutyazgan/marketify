@@ -16,8 +16,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Check, ChevronLeft } from 'lucide-react-native';
 import { ButtonPrimary } from '@/components/primitives/Button';
 import { useToast } from '@/components/primitives/Toast';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
+import { classifySupabaseError, transientErrorMessage } from '@/lib/errors';
 import {
   classifyVideoUrl,
   fetchTikTokOembed,
@@ -104,6 +106,10 @@ export default function SubmitVideoComposer() {
     if (error) {
       console.error('get_my_application_for_submit failed', error);
       setState({ kind: 'error', code: 'generic' });
+      const info = await classifySupabaseError(error);
+      if (info.isTransient) {
+        showToast({ message: transientErrorMessage(info), variant: 'error' });
+      }
       return;
     }
     const row = data?.[0];
@@ -118,7 +124,7 @@ export default function SubmitVideoComposer() {
     const conditions = parsePostConditions(row.post_conditions);
     setState({ kind: 'ok', application: row, conditions });
     setAffirmations(Object.fromEntries(conditions.map((c) => [c.id, false])));
-  }, [applicationId]);
+  }, [applicationId, showToast]);
 
   useEffect(() => {
     void load();
@@ -270,7 +276,7 @@ export default function SubmitVideoComposer() {
             <ActivityIndicator color={colors.ink} />
           </View>
         ) : state.kind === 'error' ? (
-          <ErrorBody code={state.code} onBack={onBack} />
+          <ErrorBody code={state.code} onBack={onBack} onRetry={load} />
         ) : (
           <>
             <ScrollView
@@ -328,33 +334,42 @@ function Header({ onBack }: { onBack: () => void }) {
 function ErrorBody({
   code,
   onBack,
+  onRetry,
 }: {
   code: 'not_found' | 'not_approved' | 'generic';
   onBack: () => void;
+  onRetry: () => void;
 }) {
-  const copy =
-    code === 'not_found'
-      ? 'This application is no longer available.'
-      : code === 'not_approved'
-        ? 'Only approved applications can accept video submissions.'
-        : 'Could not load this application. Try again in a moment.';
+  if (code === 'not_found') {
+    return (
+      <ErrorState
+        testID="submit-error"
+        illustration="not_found"
+        title="Application not found"
+        body="This application is no longer available."
+        retryLabel="Back"
+        onRetry={onBack}
+      />
+    );
+  }
+  if (code === 'not_approved') {
+    return (
+      <ErrorState
+        testID="submit-error"
+        illustration="not_found"
+        title="Can't submit"
+        body="Only approved applications can accept video submissions."
+        retryLabel="Back"
+        onRetry={onBack}
+      />
+    );
+  }
   return (
-    <View style={styles.centered}>
-      <Text style={[textStyles.h1, { color: colors.ink, textAlign: 'center' }]}>
-        Can&apos;t submit
-      </Text>
-      <Text
-        style={[
-          textStyles.body,
-          { color: colors.ink70, textAlign: 'center', marginTop: spacing.sm },
-        ]}
-      >
-        {copy}
-      </Text>
-      <View style={{ marginTop: spacing.xl, minWidth: 180 }}>
-        <ButtonPrimary label="Back" onPress={onBack} testID="submit-error-back" />
-      </View>
-    </View>
+    <ErrorState
+      testID="submit-error"
+      body="Could not load this application. Try again in a moment."
+      onRetry={onRetry}
+    />
   );
 }
 

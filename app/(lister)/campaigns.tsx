@@ -12,11 +12,14 @@ import { router } from 'expo-router';
 import { CampaignCard, type CampaignCardCurrency } from '@/components/primitives/CampaignCard';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { type StatusPillStatus } from '@/components/primitives/StatusPill';
+import { useToast } from '@/components/primitives/Toast';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { Fab } from '@/components/shared/Fab';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
+import { classifySupabaseError, transientErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
@@ -128,6 +131,7 @@ export default function ListerCampaigns() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { show: showToast } = useToast();
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -136,10 +140,14 @@ export default function ListerCampaigns() {
     if (rpcError) {
       setError("Couldn't load campaigns.");
       setRows([]);
+      const info = await classifySupabaseError(rpcError);
+      if (info.isTransient) {
+        showToast({ message: transientErrorMessage(info), variant: 'error' });
+      }
     } else {
       setRows(data ?? []);
     }
-  }, [userId]);
+  }, [userId, showToast]);
 
   useEffect(() => {
     setLoading(true);
@@ -192,9 +200,14 @@ export default function ListerCampaigns() {
             <SkeletonCard />
           </View>
         ) : error ? (
-          <View style={styles.emptyBox}>
-            <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
-          </View>
+          <ErrorState
+            testID="campaigns-error"
+            body={error}
+            onRetry={() => {
+              setLoading(true);
+              void load().finally(() => setLoading(false));
+            }}
+          />
         ) : visible.length === 0 ? (
           <EmptyState
             testID={`campaigns-empty-${segment}`}
@@ -278,9 +291,5 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
-  },
-  emptyBox: {
-    padding: spacing.lg,
-    alignItems: 'center',
   },
 });

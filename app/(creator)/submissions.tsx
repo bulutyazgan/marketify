@@ -19,9 +19,11 @@ import { StatusPill, type StatusPillStatus } from '@/components/primitives/Statu
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { useToast } from '@/components/primitives/Toast';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
+import { classifySupabaseError, transientErrorMessage } from '@/lib/errors';
 import { getCachedToken } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { formatRelativeTime } from '@/lib/time';
@@ -143,11 +145,15 @@ export default function Submissions() {
     if (rpcError) {
       setError("Couldn't load submissions.");
       setRows([]);
+      const info = await classifySupabaseError(rpcError);
+      if (info.isTransient) {
+        showToast({ message: transientErrorMessage(info), variant: 'error' });
+      }
     } else {
       setRows(data ?? []);
     }
     setLoading(false);
-  }, [userId]);
+  }, [userId, showToast]);
 
   useEffect(() => {
     void load();
@@ -237,9 +243,14 @@ export default function Submissions() {
             <SkeletonCard />
           </View>
         ) : error ? (
-          <View style={styles.emptyBox}>
-            <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
-          </View>
+          <ErrorState
+            testID="submissions-error"
+            body={error}
+            onRetry={() => {
+              setError(null);
+              void load();
+            }}
+          />
         ) : visible.length === 0 ? (
           <EmptyState
             testID={`submissions-empty-${segment}`}
@@ -404,9 +415,5 @@ const styles = StyleSheet.create({
   videoUrl: {
     color: colors.ink70,
     fontFamily: 'monospace',
-  },
-  emptyBox: {
-    padding: spacing.lg,
-    alignItems: 'center',
   },
 });

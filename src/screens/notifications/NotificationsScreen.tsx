@@ -18,10 +18,13 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
+import { useToast } from '@/components/primitives/Toast';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
+import { classifySupabaseError, transientErrorMessage } from '@/lib/errors';
 import { getCachedToken } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { formatRelativeTime } from '@/lib/time';
@@ -188,6 +191,7 @@ export function NotificationsScreen({ role }: NotificationsScreenProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { show: showToast } = useToast();
 
   const load = useCallback(
     async (mode: 'initial' | 'refresh' = 'initial') => {
@@ -204,13 +208,17 @@ export function NotificationsScreen({ role }: NotificationsScreenProps) {
       if (rpcError) {
         setError("Couldn't load notifications.");
         setRows([]);
+        const info = await classifySupabaseError(rpcError);
+        if (info.isTransient) {
+          showToast({ message: transientErrorMessage(info), variant: 'error' });
+        }
       } else {
         setRows(data ?? []);
       }
       if (mode === 'initial') setLoading(false);
       else setRefreshing(false);
     },
-    [userId],
+    [userId, showToast],
   );
 
   useEffect(() => {
@@ -322,9 +330,11 @@ export function NotificationsScreen({ role }: NotificationsScreenProps) {
             <SkeletonCard />
           </View>
         ) : error ? (
-          <View style={styles.emptyBox}>
-            <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
-          </View>
+          <ErrorState
+            testID="notifications-error"
+            body={error}
+            onRetry={() => void load('initial')}
+          />
         ) : rows.length === 0 ? (
           <EmptyState
             testID="notifications-empty"
@@ -456,10 +466,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderWidth: 2,
     borderColor: colors.ink,
-  },
-  emptyBox: {
-    padding: spacing.xl,
-    alignItems: 'center',
-    gap: spacing.sm,
   },
 });
