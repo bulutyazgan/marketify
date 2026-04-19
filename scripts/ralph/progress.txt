@@ -1654,3 +1654,15 @@ Started: (will be replaced on first run)
 - **Learnings for future iterations:**
   - Pattern #162 (re-check iteration shape) held cleanly again — no implementation churn, no Codebase Patterns churn. The single deliverable is this one-paragraph heartbeat + `chore:` commit. Ten consecutive iterations is now the plateau marker — if the streak reaches 15, consider whether to promote a higher-level decision about pausing the loop until unblock, but that's a human call, not a loop-self decision.
 ---
+
+## 2026-04-19 23:30 — US-061 (MCP blocker re-check, still passes:false)
+- Eleventh consecutive MCP-blocked iteration on US-061 (US-065 remains blocked at priority 65, unaffected this turn). Per Codebase Pattern #162 / #153 the autonomous loop still cannot self-unblock — Supabase OAuth callback URL (`http://localhost:<port>/callback`) is unreachable from the headless loop.
+- ToolSearch probe this iteration: `select:mcp__plugin_supabase_supabase__list_tables,mcp__plugin_supabase_supabase__apply_migration,mcp__plugin_supabase_supabase__execute_sql` → "No matching deferred tools found". Broader probe surfaced only `mcp__plugin_supabase_supabase__authenticate` + `mcp__plugin_supabase_supabase__complete_authentication`. Confirms the real toolset is still gated; did not invoke `authenticate` this turn to avoid issuing yet another dead OAuth URL.
+- Working tree clean on `ralph/marketify-mvp` at entry; US-061 artifacts intact from commit c291ad9 (migration `20260419120000_us_061_notifications_realtime_mark_read.sql` + `NotificationBell.tsx` + `NotificationsScreen.tsx` + `app/(creator)/notifications.tsx` + `app/(lister)/notifications.tsx` + layout header edits). Re-verify path unchanged — see prd.json US-061 notes.
+- No implementation delta. No Codebase Patterns delta. No code-reviewer run. No quality-gate run.
+- Files changed: `scripts/ralph/progress.txt` (this entry only).
+- Quality checks: tsc skipped / lint skipped / supabase advisors n/a (MCP blocked) / mobile-mcp skipped.
+- Code-reviewer skipped (no implementation diff).
+- **Learnings for future iterations:**
+  - Eleven consecutive blocked iterations. The previous entry flagged 15 as a plateau marker worth surfacing; we're now four iterations away. Nothing actionable from inside the loop — the shape stays a one-paragraph heartbeat + `chore:` commit.
+---
