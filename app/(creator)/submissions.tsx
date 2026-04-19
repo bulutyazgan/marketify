@@ -18,6 +18,7 @@ import { ShakeOnError, type ShakeOnErrorHandle } from '@/components/effects/Shak
 import { StatusPill, type StatusPillStatus } from '@/components/primitives/StatusPill';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { useToast } from '@/components/primitives/Toast';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
@@ -240,11 +241,22 @@ export default function Submissions() {
             <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : visible.length === 0 ? (
-          <View style={styles.emptyBox} testID={`submissions-empty-${segment}`}>
-            <Text style={[textStyles.body, { color: colors.ink70 }]}>
-              {emptyMessageFor(segment)}
-            </Text>
-          </View>
+          <EmptyState
+            testID={`submissions-empty-${segment}`}
+            illustration="no_submissions"
+            title={emptyTitleFor(segment)}
+            body={emptyMessageFor(segment)}
+            primaryAction={
+              segment === 'pending'
+                ? {
+                    label: 'Go to Applied',
+                    caption: 'Submit a video from an approved application.',
+                    onPress: () => router.push('/(creator)/applications'),
+                    testID: 'submissions-empty-cta-pending',
+                  }
+                : undefined
+            }
+          />
         ) : (
           <View style={styles.list}>
             {visible.map((row) => (
@@ -258,14 +270,25 @@ export default function Submissions() {
   );
 }
 
+function emptyTitleFor(segment: SubmissionStatus): string {
+  switch (segment) {
+    case 'pending':
+      return 'No pending submissions';
+    case 'approved':
+      return 'Nothing approved yet';
+    case 'rejected':
+      return 'No rejections here';
+  }
+}
+
 function emptyMessageFor(segment: SubmissionStatus): string {
   switch (segment) {
     case 'pending':
-      return 'No pending submissions. Submit a video from an approved application.';
+      return 'Approved applications unlock the submit flow.';
     case 'approved':
-      return 'Nothing approved yet.';
+      return 'Your accepted videos will show up here.';
     case 'rejected':
-      return 'No rejections here.';
+      return 'Rejected submissions would appear here.';
   }
 }
 

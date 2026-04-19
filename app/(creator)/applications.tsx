@@ -18,6 +18,7 @@ import { ShakeOnError, type ShakeOnErrorHandle } from '@/components/effects/Shak
 import { StatusPill, type StatusPillStatus } from '@/components/primitives/StatusPill';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { useToast } from '@/components/primitives/Toast';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
@@ -273,11 +274,21 @@ export default function Applications() {
             <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : visible.length === 0 ? (
-          <View style={styles.emptyBox} testID={`applications-empty-${segment}`}>
-            <Text style={[textStyles.body, { color: colors.ink70 }]}>
-              {emptyMessageFor(segment)}
-            </Text>
-          </View>
+          <EmptyState
+            testID={`applications-empty-${segment}`}
+            illustration="no_applications"
+            title={emptyTitleFor(segment)}
+            body={emptyMessageFor(segment)}
+            primaryAction={
+              segment === 'pending' || segment === 'approved'
+                ? {
+                    label: 'Find a bounty',
+                    onPress: () => router.push('/(creator)/feed'),
+                    testID: `applications-empty-cta-${segment}`,
+                  }
+                : undefined
+            }
+          />
         ) : (
           <View style={styles.list}>
             {visible.map((row) => (
@@ -291,16 +302,29 @@ export default function Applications() {
   );
 }
 
+function emptyTitleFor(segment: Segment): string {
+  switch (segment) {
+    case 'pending':
+      return 'No pending applications';
+    case 'approved':
+      return 'Nothing approved yet';
+    case 'rejected':
+      return 'No rejections here';
+    case 'cancelled':
+      return 'No cancelled applications';
+  }
+}
+
 function emptyMessageFor(segment: Segment): string {
   switch (segment) {
     case 'pending':
-      return 'No pending applications yet. Apply from Discover.';
+      return 'Apply from Discover to see them show up here.';
     case 'approved':
-      return 'Nothing approved yet — keep applying.';
+      return 'Keep applying — approvals land here the moment a lister says yes.';
     case 'rejected':
-      return 'No rejections here.';
+      return 'Rejected applications would appear here.';
     case 'cancelled':
-      return 'No cancelled applications.';
+      return 'Cancelled applications would appear here.';
   }
 }
 

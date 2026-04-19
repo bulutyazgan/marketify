@@ -11,7 +11,6 @@ import {
 import { router, type Href } from 'expo-router';
 import {
   AlertCircle,
-  BellRing,
   CheckCircle2,
   FileEdit,
   Inbox,
@@ -19,6 +18,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
@@ -326,15 +326,12 @@ export function NotificationsScreen({ role }: NotificationsScreenProps) {
             <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : rows.length === 0 ? (
-          <View style={styles.emptyBox} testID="notifications-empty">
-            <BellRing size={32} color={colors.ink40} strokeWidth={1.5} />
-            <Text style={[textStyles.body, styles.emptyTitle]}>
-              Nothing here yet
-            </Text>
-            <Text style={[textStyles.caption, { color: colors.ink70 }]}>
-              We&apos;ll let you know as soon as something happens.
-            </Text>
-          </View>
+          <EmptyState
+            testID="notifications-empty"
+            illustration="no_notifications"
+            title="Nothing here yet"
+            body="We'll let you know as soon as something happens."
+          />
         ) : (
           <View style={styles.list}>
             {rows.map((row) => (
@@ -464,9 +461,5 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     gap: spacing.sm,
-  },
-  emptyTitle: {
-    color: colors.ink,
-    marginTop: spacing.sm,
   },
 });

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -13,7 +12,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CampaignCard } from '@/components/primitives/CampaignCard';
 import { Chip } from '@/components/primitives/Chip';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
-import { colors, radii, shadows, spacing } from '@/design/tokens';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { colors, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
@@ -151,12 +151,26 @@ export default function Feed() {
           </View>
         ) : rows.length === 0 ? (
           <EmptyState
-            eligibleOnly={eligibleOnly}
-            onSeeAll={() => {
-              if (!eligibleOnly) return;
-              setEligibleOnly(false);
-              void AsyncStorage.setItem(FILTER_STORAGE_KEY, 'false');
+            testID="discover-empty"
+            illustration="no_eligible"
+            title="Nothing matches you — yet."
+            body={'Campaigns get added daily. Meanwhile, here\u2019s what to try.'}
+            primaryAction={{
+              label: 'Refresh your metrics',
+              caption: 'Your follower counts may be out of date.',
+              onPress: () => router.push('/(creator)/profile'),
+              testID: 'empty-action-refresh',
             }}
+            secondaryAction={
+              eligibleOnly
+                ? {
+                    label: 'See all campaigns',
+                    caption: 'Turn off the eligibility filter.',
+                    onPress: onToggleEligible,
+                    testID: 'empty-action-see-all',
+                  }
+                : undefined
+            }
           />
         ) : (
           <View style={styles.list} testID="discover-list">
@@ -175,55 +189,6 @@ export default function Feed() {
         )}
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-// Empty state per docs/design.md §5.5. Two action cards: "Refresh your
-// metrics" routes to Profile (which has its own refresh affordance from
-// US-036); "See all campaigns" flips the eligibility toggle off in place.
-// The latter is hidden when the toggle is already off — nothing to flip.
-function EmptyState({
-  eligibleOnly,
-  onSeeAll,
-}: {
-  eligibleOnly: boolean;
-  onSeeAll: () => void;
-}) {
-  return (
-    <View style={styles.emptyRoot} testID="discover-empty">
-      <Text style={[textStyles.h1, styles.emptyHeadline]}>Nothing matches you — yet.</Text>
-      <Text style={[textStyles.body, styles.emptyBody]}>
-        {'Campaigns get added daily. Meanwhile, here\u2019s what to try.'}
-      </Text>
-
-      <Pressable
-        style={[styles.actionCard, shadows.hard]}
-        onPress={() => router.push('/(creator)/profile')}
-        accessibilityRole="button"
-        accessibilityLabel="Refresh your metrics"
-        testID="empty-action-refresh"
-      >
-        <Text style={[textStyles.h2, { color: colors.ink }]}>Refresh your metrics</Text>
-        <Text style={[textStyles.caption, { color: colors.ink70 }]}>
-          Your follower counts may be out of date.
-        </Text>
-      </Pressable>
-
-      {eligibleOnly ? (
-        <Pressable
-          style={[styles.actionCard, shadows.hard]}
-          onPress={onSeeAll}
-          accessibilityRole="button"
-          accessibilityLabel="See all campaigns"
-          testID="empty-action-see-all"
-        >
-          <Text style={[textStyles.h2, { color: colors.ink }]}>See all campaigns</Text>
-          <Text style={[textStyles.caption, { color: colors.ink70 }]}>
-            Turn off the eligibility filter.
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
   );
 }
 
@@ -249,23 +214,5 @@ const styles = StyleSheet.create({
   emptyBox: {
     padding: spacing.lg,
     alignItems: 'center',
-  },
-  emptyRoot: {
-    gap: spacing.md,
-    paddingTop: spacing.lg,
-  },
-  emptyHeadline: {
-    color: colors.ink,
-  },
-  emptyBody: {
-    color: colors.ink70,
-  },
-  actionCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.ink,
-    borderWidth: 2,
-    borderRadius: radii.card,
-    padding: spacing.base,
-    gap: spacing.xs,
   },
 });

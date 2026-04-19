@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import { CampaignCard, type CampaignCardCurrency } from '@/components/primitives/CampaignCard';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { type StatusPillStatus } from '@/components/primitives/StatusPill';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { Fab } from '@/components/shared/Fab';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { textStyles } from '@/design/typography';
@@ -195,11 +196,22 @@ export default function ListerCampaigns() {
             <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : visible.length === 0 ? (
-          <View style={styles.emptyBox} testID={`campaigns-empty-${segment}`}>
-            <Text style={[textStyles.body, { color: colors.ink70, textAlign: 'center' }]}>
-              {emptyMessageFor(segment)}
-            </Text>
-          </View>
+          <EmptyState
+            testID={`campaigns-empty-${segment}`}
+            illustration="lister_no_campaigns"
+            title={emptyTitleFor(segment)}
+            body={emptyMessageFor(segment)}
+            primaryAction={
+              segment === 'active'
+                ? {
+                    label: 'Post a bounty',
+                    caption: 'Create a campaign and creators can start applying.',
+                    onPress: onCreate,
+                    testID: 'campaigns-empty-cta-post',
+                  }
+                : undefined
+            }
+          />
         ) : (
           <View style={styles.list}>
             {visible.map((row) => (
@@ -227,10 +239,14 @@ export default function ListerCampaigns() {
   );
 }
 
+function emptyTitleFor(segment: Segment): string {
+  return segment === 'active' ? 'No active campaigns' : 'No inactive campaigns';
+}
+
 function emptyMessageFor(segment: Segment): string {
   return segment === 'active'
-    ? 'No active campaigns. Post your first bounty.'
-    : 'No inactive campaigns.';
+    ? 'Your live bounties will show up here.'
+    : 'Drafts, paused, and closed campaigns would appear here.';
 }
 
 const styles = StyleSheet.create({

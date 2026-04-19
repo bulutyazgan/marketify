@@ -16,6 +16,7 @@ import { ButtonPrimary, ButtonSecondary } from '@/components/primitives/Button';
 import { StatusPill, type StatusPillStatus } from '@/components/primitives/StatusPill';
 import { SkeletonCard } from '@/components/primitives/SkeletonCard';
 import { useToast } from '@/components/primitives/Toast';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { colors, radii, shadows, spacing } from '@/design/tokens';
 import { fontFamilies, textStyles } from '@/design/typography';
 import { useAuth } from '@/lib/auth';
@@ -481,11 +482,12 @@ export default function ListerInboxApplications() {
             <Text style={[textStyles.body, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : visibleCount === 0 ? (
-          <View style={styles.emptyBox} testID={`applications-empty-${segment}`}>
-            <Text style={[textStyles.body, { color: colors.ink70, textAlign: 'center' }]}>
-              {emptyMessageFor(segment)}
-            </Text>
-          </View>
+          <EmptyState
+            testID={`applications-empty-${segment}`}
+            illustration="lister_no_applications"
+            title={emptyTitleFor(segment)}
+            body={emptyMessageFor(segment)}
+          />
         ) : (
           <View style={styles.list}>
             {grouped.map((group) => (
@@ -522,14 +524,25 @@ export default function ListerInboxApplications() {
   );
 }
 
+function emptyTitleFor(segment: Segment): string {
+  switch (segment) {
+    case 'pending':
+      return 'No applications yet';
+    case 'approved':
+      return 'No approvals yet';
+    case 'rejected':
+      return 'No rejections yet';
+  }
+}
+
 function emptyMessageFor(segment: Segment): string {
   switch (segment) {
     case 'pending':
-      return 'No pending applications. New applications will land here in real time.';
+      return 'New applications will land here in real time.';
     case 'approved':
-      return 'No approvals yet.';
+      return 'Approved applications would show up here.';
     case 'rejected':
-      return 'No rejections yet.';
+      return 'Rejected applications would show up here.';
   }
 }
 
