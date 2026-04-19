@@ -1625,3 +1625,12 @@ Started: (will be replaced on first run)
   - **Pattern #153 operational addendum is now live in Codebase Patterns.** Future MCP-blocked iterations can point at it instead of re-deriving the unblock path every time. If the streak continues, iteration logs should reference the addendum rather than re-explaining what a human would need to do.
   - **One forward-flag per streak is enough.** The 19:00 entry flagged the promotion; this entry executes it. No further Codebase Patterns churn on Pattern #153 is warranted until either (a) the blocker clears and a post-mortem is worth writing, or (b) a new symptom emerges (e.g. authentication completes but real tools still don't surface — that would be a distinct pattern about plugin-server token persistence).
 ---
+
+## 2026-04-19 21:00 — US-061 (MCP blocker re-check, still passes:false)
+- Eighth consecutive MCP-blocked iteration on US-061 (US-065 remains blocked at lower priority). Per Codebase Pattern #162 the autonomous loop cannot self-unblock — waiting on a human-initiated interactive session to complete Supabase OAuth.
+- ToolSearch probe: `select:mcp__plugin_supabase_supabase__list_tables,mcp__plugin_supabase_supabase__apply_migration,mcp__plugin_supabase_supabase__execute_sql` → "No matching deferred tools found". Only `authenticate` + `complete_authentication` surface. Same blocker class as prior seven iterations.
+- No implementation delta. No Codebase Patterns delta. Re-verify path for both stories already enumerated in prd.json notes.
+- Files changed: `scripts/ralph/progress.txt` (this entry only).
+- Quality checks: tsc skipped / lint skipped / supabase advisors n/a (MCP blocked) / mobile-mcp skipped.
+- Code-reviewer skipped (no implementation diff).
+---
