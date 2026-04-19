@@ -928,8 +928,8 @@
         "Commit"
       ],
       "priority": 62,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "2026-04-19. Shared EmptyState primitive + 10-key inline SVG-XML illustration registry (src/components/shared/EmptyState.tsx + emptyStateIllustrations.ts). Wired into Discover (§5.5 two-action shape: 'Refresh your metrics' primary + 'See all campaigns' secondary that toggles the Eligible filter off), Applied (pending/approved → 'Find a bounty' → feed; rejected → no CTA), Submitted (pending → 'Go to Applied'; reviewed → no CTA), Campaigns (active → 'Post a bounty' → new; inactive → no CTA), Inbox applications + submissions (no CTA), Notifications ('no_notifications'). Added no_notifications as a 10th registry key (not in spec's 9) because bell/activity inbox doesn't semantically fit any of the spec keys — code-reviewer agreed. Colors restricted to ink/primary/cta per §1.5. Inline SVG strings rather than .svg files because react-native-svg-transformer isn't installed — Pattern #146 captures this. Quality: tsc ✓ / expo lint ✓ / code-reviewer: 2 IMPORTANT fixed in this commit (Discover secondary action was bypassing onToggleEligible → double-write AsyncStorage, now routes through it; ActionCard missing pressed-state violated design.md §8 motion checklist, now uses function-form Pressable style prop with opacity+primarySoft). Mobile-mcp verification: screenshots saved to scripts/ralph/screenshots/ for creator Applied/Submitted pending (both empty states with 'Find a bounty' / 'Go to Applied' CTAs visible), lister Campaigns inactive ('No inactive campaigns' with megaphone), lister Inbox applications ('No applications yet' with inbox tray). Lister active campaigns + creator Discover not captured because seed data has 3 active campaigns + ineligible creator for Discover — the empty shapes were verified by toggling to a filter that returns 0 rows. Creator sign-in fresh-state path exercised in prior iterations."
     },
     {
       "id": "US-063",
