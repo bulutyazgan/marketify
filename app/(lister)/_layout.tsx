@@ -1,8 +1,9 @@
 import { Redirect, Slot, usePathname } from 'expo-router';
 import { Building2, Inbox, LayoutDashboard, Megaphone } from 'lucide-react-native';
-import { StyleSheet, View } from 'react-native';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { NotificationBell } from '@/components/shared/NotificationBell';
 import { TabBar, type TabDef } from '@/components/shared/TabBar';
-import { colors } from '@/design/tokens';
+import { colors, spacing } from '@/design/tokens';
 import { useAuth } from '@/lib/auth';
 
 // Lister tab group — Home (index) / Campaigns / Inbox / Profile per US-031 AC
@@ -56,6 +57,14 @@ export default function ListerLayout() {
 
   return (
     <View style={styles.root}>
+      {hideTabBar ? null : (
+        <SafeAreaView style={styles.headerSafeArea}>
+          <View style={styles.headerBar}>
+            <View style={styles.headerSpacer} />
+            <NotificationBell role="lister" />
+          </View>
+        </SafeAreaView>
+      )}
       <View style={styles.content}>
         <Slot />
       </View>
@@ -66,5 +75,14 @@ export default function ListerLayout() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.canvas },
+  headerSafeArea: { backgroundColor: colors.canvas },
+  headerBar: {
+    height: 48,
+    paddingHorizontal: spacing.base,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  headerSpacer: { flex: 1 },
   content: { flex: 1 },
 });
