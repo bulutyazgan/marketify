@@ -1642,3 +1642,15 @@ Started: (will be replaced on first run)
 - No implementation delta. No Codebase Patterns delta. No code-reviewer run (nothing to review). No quality-gate run (no code changes).
 - Files changed: `scripts/ralph/progress.txt` (this entry only).
 ---
+
+## 2026-04-19 23:00 — US-061 (MCP blocker re-check, still passes:false)
+- Tenth consecutive MCP-blocked iteration on US-061 (US-065 remains blocked at lower priority). Per Codebase Pattern #162 / #153 the autonomous loop still cannot self-unblock — Supabase OAuth completion requires an interactive browser session that the headless loop cannot drive.
+- ToolSearch probes this iteration: `select:mcp__plugin_supabase_supabase__list_migrations,mcp__plugin_supabase_supabase__apply_migration,mcp__plugin_supabase_supabase__execute_sql,mcp__plugin_supabase_supabase__get_advisors,mcp__plugin_supabase_supabase__generate_typescript_types` → "No matching deferred tools found". Only `authenticate` + `complete_authentication` surface. Invoked `mcp__plugin_supabase_supabase__authenticate` — returned a fresh OAuth URL at `http://localhost:51841/callback`, unreachable from the loop. Identical blocker class to the prior nine iterations.
+- Working tree clean on `ralph/marketify-mvp` at entry; US-061 artifacts (migration `20260419120000_us_061_notifications_realtime_mark_read.sql` + `NotificationBell.tsx` + `NotificationsScreen.tsx` + `app/(creator)/notifications.tsx` + `app/(lister)/notifications.tsx` + layout header edits) intact from commit c291ad9. Re-verify path unchanged — see prd.json US-061 notes for the full apply_migration → execute_sql seed → screenshot → flip sequence.
+- No implementation delta. No Codebase Patterns delta. No code-reviewer run (nothing to review). No quality-gate run (no code changes).
+- Files changed: `scripts/ralph/progress.txt` (this entry only).
+- Quality checks: tsc skipped / lint skipped / supabase advisors n/a (MCP blocked) / mobile-mcp skipped.
+- Code-reviewer skipped (no implementation diff).
+- **Learnings for future iterations:**
+  - Pattern #162 (re-check iteration shape) held cleanly again — no implementation churn, no Codebase Patterns churn. The single deliverable is this one-paragraph heartbeat + `chore:` commit. Ten consecutive iterations is now the plateau marker — if the streak reaches 15, consider whether to promote a higher-level decision about pausing the loop until unblock, but that's a human call, not a loop-self decision.
+---
