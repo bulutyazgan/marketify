@@ -1690,3 +1690,15 @@ Started: (will be replaced on first run)
 - **Learnings for future iterations:**
   - Thirteen consecutive blocked iterations. Two away from the 15-iteration plateau marker. Shape remains the one-paragraph heartbeat + `chore:` commit until a human-initiated interactive session completes Supabase OAuth.
 ---
+
+## 2026-04-20 00:10 — US-061 (MCP blocker re-check, still passes:false)
+- Fourteenth consecutive MCP-blocked iteration on US-061 (US-065 remains blocked at priority 65). Per Codebase Pattern #162 / #153 the autonomous loop still cannot self-unblock — Supabase OAuth callback URL (`http://localhost:<port>/callback`) is unreachable from the headless loop.
+- ToolSearch probe this iteration: `select:mcp__plugin_supabase_supabase__list_tables,mcp__plugin_supabase_supabase__apply_migration,mcp__plugin_supabase_supabase__execute_sql,mcp__plugin_supabase_supabase__get_advisors` → "No matching deferred tools found". Broader `supabase` keyword probe surfaced only `mcp__plugin_supabase_supabase__authenticate` + `mcp__plugin_supabase_supabase__complete_authentication`. Did not invoke `authenticate` (consistent with iterations 11–13 — avoid issuing dead OAuth URLs).
+- Working tree clean on `ralph/marketify-mvp` at entry; US-061 artifacts intact from commit c291ad9. Re-verify path unchanged — see prd.json US-061 notes.
+- No implementation delta. No Codebase Patterns delta. No code-reviewer run. No quality-gate run.
+- Files changed: `scripts/ralph/progress.txt` (this entry only).
+- Quality checks: tsc skipped / lint skipped / supabase advisors n/a (MCP blocked) / mobile-mcp skipped.
+- Code-reviewer skipped (no implementation diff).
+- **Learnings for future iterations:**
+  - Fourteen consecutive blocked iterations. One away from the 15-iteration plateau marker flagged at iteration ten. Shape remains the one-paragraph heartbeat + `chore:` commit until a human-initiated interactive session completes Supabase OAuth.
+---
