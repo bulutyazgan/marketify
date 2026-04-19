@@ -1714,3 +1714,18 @@ Started: (will be replaced on first run)
 - **Learnings for future iterations:**
   - Plateau reached at 15 consecutive blocked iterations. Shape remains the one-paragraph heartbeat + `chore:` commit until a human-initiated interactive session completes Supabase OAuth. Operator attention signal: fifteen identical heartbeats is the handoff boundary; continuing past here is expected cost but the loop will never self-recover.
 ---
+
+## 2026-04-19 16:40 — US-061 + US-065 (MCP unblocked, both finalized)
+- Operator-initiated interactive session: user authorized the Opus 4.7 conversation to apply both pending migrations directly. MCP plugin came back online (apply_migration / generate_typescript_types / get_advisors all callable).
+- US-061 migration `us_061_notifications_realtime_mark_read` applied → notifications now in supabase_realtime publication, replica identity FULL.
+- US-065 migration `us_065_list_submission_reuse_campaigns_rpc` applied → public.list_submission_reuse_campaigns(p_submission_id uuid) is live (SECURITY DEFINER, ownership-gated, search_path='').
+- Types regenerated via `generate_typescript_types`; `src/types/supabase.ts` matches the prior hand-added shape exactly (zero diff) — confirms the manual entry from iteration that shipped dae859f was correct.
+- get_advisors({type:'security'}) returned only the pre-existing INFO `rls_enabled_no_policy` on `public.events` (carried since the events table was introduced; not tied to either of these stories).
+- Quality checks: tsc ✓ / lint ✓ / supabase advisors ✓ / mobile-mcp deferred (live populated-sheet + live-tick require the realtime-tenant probe path which sits behind Patterns #122/#124/#145 — independent of this MCP unblock).
+- Code-reviewer not re-run this iteration (code already reviewed in prior iterations c291ad9 + dae859f; only schema apply + types regen happened here, no new application code touched).
+- prd.json: US-061 + US-065 flipped to passes:true with finalization notes.
+- Files changed: `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`.
+- **Learnings for future iterations:**
+  - The MCP OAuth blocker (Patterns #153 / #162) does cleanly resolve in an interactive session — the autonomous-loop heartbeat shape (15 consecutive `chore:` re-checks) was the right posture; no work was lost and the operator handoff was effectively instant once attention arrived.
+  - When MCP returns mid-session, the recovery sequence is: apply pending migrations in dependency order → generate types → diff against the last hand-added entry → run advisors → flip prd.json → commit. This is the canonical "MCP-back-online" recipe.
+---
